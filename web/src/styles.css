@@ -157,6 +157,7 @@ body {
   box-shadow: 0 0 4px rgba(255, 255, 255, 0.7);
 }
 .idx-row { font-size: 0.7rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.idx-warn { color: #f59e0b; font-weight: 600; }
 
 .cmp-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem; margin-top: 0.5rem; }
 .cmp-pair figure { margin: 0; }

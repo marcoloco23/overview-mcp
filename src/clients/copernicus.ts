@@ -25,6 +25,7 @@ export interface IndexStats {
   stDev: number;
   sampleCount: number;
   noDataCount: number;
+  validPct: number; // % of pixels that survived cloud/shadow/water masking — a quality flag
   p25: number | null;
   p50: number | null;
   p75: number | null;
@@ -187,13 +188,15 @@ export class CopernicusClient {
       );
     }
     const pct = st.percentiles ?? {};
+    const noData = st.noDataCount ?? 0;
     return {
       mean: st.mean,
       min: st.min,
       max: st.max,
       stDev: st.stDev,
       sampleCount: st.sampleCount,
-      noDataCount: st.noDataCount ?? 0,
+      noDataCount: noData,
+      validPct: st.sampleCount > 0 ? Math.round((100 * (st.sampleCount - noData)) / st.sampleCount) : 0,
       p25: pct["25.0"] ?? null,
       p50: pct["50.0"] ?? null,
       p75: pct["75.0"] ?? null,

@@ -76,19 +76,22 @@ export function renderCard(card: Card, onFocus: (card: Card) => void): HTMLEleme
 
   if (card.type === "index") {
     const stats = card.payload.stats as
-      | { mean: number; min: number; max: number; p50: number | null; sampleCount: number }
+      | { mean: number; min: number; max: number; p50: number | null; validPct?: number }
       | undefined;
     const index = String(card.payload.index ?? "index");
     if (stats) {
       // NDVI/NDWI/NBR are all in [-1, 1]; place the mean on a gradient bar.
       const pos = Math.max(0, Math.min(100, ((stats.mean + 1) / 2) * 100));
+      const valid = typeof stats.validPct === "number" ? stats.validPct : null;
       const panel = document.createElement("div");
       panel.className = "idx-panel";
       panel.innerHTML =
         `<div class="idx-top"><span class="idx-name">${escapeHtml(index)}</span>` +
         `<span class="idx-mean">${stats.mean.toFixed(3)}</span></div>` +
         `<div class="idx-bar"><span class="idx-marker" style="left:${pos.toFixed(1)}%"></span></div>` +
-        `<div class="idx-row">min ${stats.min.toFixed(2)} · median ${(stats.p50 ?? stats.mean).toFixed(2)} · max ${stats.max.toFixed(2)}</div>`;
+        `<div class="idx-row">min ${stats.min.toFixed(2)} · median ${(stats.p50 ?? stats.mean).toFixed(2)} · max ${stats.max.toFixed(2)}` +
+        (valid !== null ? ` · <span class="${valid < 60 ? "idx-warn" : ""}">${valid}% clear</span>` : ``) +
+        `</div>`;
       el.appendChild(panel);
     }
   }

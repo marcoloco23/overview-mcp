@@ -35,12 +35,26 @@ const INDEX_BANDS: Record<string, [string, string]> = {
 
 export const INDEX_NAMES = Object.keys(INDEX_BANDS);
 
-/** Build a FLOAT32 + dataMask stat evalscript for a normalized-difference index. */
+/**
+ * Build a FLOAT32 + dataMask stat evalscript for a normalized-difference index.
+ *
+ * Uses the Sentinel-2 Scene Classification (SCL) band to exclude polluting pixels from the
+ * statistics so the numbers are trustworthy:
+ *   - always mask defective (1), cloud shadow (3), cloud (8,9), and cirrus (10),
+ *   - for vegetation/burn indices also mask open water (6) so seasonal river/lake level
+ *     doesn't dilute the result — but NEVER for NDWI, where water is the signal.
+ * Masked pixels become noDataCount, which the tool surfaces as a "% valid" quality flag.
+ */
 export function statEvalscript(index: string): string {
   const pair = INDEX_BANDS[index];
   if (!pair) throw new Error(`unknown index '${index}'. Options: ${INDEX_NAMES.join(", ")}`);
   const [a, b] = pair;
+  const water = index !== "NDWI" ? " && s.SCL !== 6" : "";
   return `//VERSION=3
-function setup(){return {input:[{bands:["${a}","${b}","dataMask"]}],output:[{id:"data",bands:1,sampleType:"FLOAT32"},{id:"dataMask",bands:1}]}}
-function evaluatePixel(s){var v=(s.${a}-s.${b})/(s.${a}+s.${b});return {data:[v],dataMask:[s.dataMask]}}`;
+function setup(){return {input:[{bands:["${a}","${b}","SCL","dataMask"]}],output:[{id:"data",bands:1,sampleType:"FLOAT32"},{id:"dataMask",bands:1}]}}
+function evaluatePixel(s){
+  var v=(s.${a}-s.${b})/(s.${a}+s.${b});
+  var clear=(s.SCL!==1 && s.SCL!==3 && s.SCL!==8 && s.SCL!==9 && s.SCL!==10${water})?1:0;
+  return {data:[v],dataMask:[s.dataMask*clear]};
+}`;
 }

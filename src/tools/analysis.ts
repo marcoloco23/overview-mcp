@@ -183,6 +183,8 @@ export function registerAnalysisTools(server: McpServer): void {
           ],
         });
 
+        const minValid = Math.min(a.stats.validPct, b.stats.validPct);
+        const lowQuality = minValid < 60;
         const meta = {
           index: idx,
           view: v,
@@ -191,8 +193,15 @@ export function registerAnalysisTools(server: McpServer): void {
           windowDays: win,
           [`${idx}_mean_A`]: a.stats.mean,
           [`${idx}_mean_B`]: b.stats.mean,
+          validPctA: a.stats.validPct,
+          validPctB: b.stats.validPct,
           delta,
-          interpretation: `${idx} mean ${dir}d by ${Math.abs(delta.meanChange).toFixed(3)} from ${dateA} to ${dateB}`,
+          interpretation:
+            `${idx} mean ${dir}d by ${Math.abs(delta.meanChange).toFixed(3)} from ${dateA} to ${dateB}` +
+            ` (clear pixels: ${a.stats.validPct}% / ${b.stats.validPct}% after cloud+water masking).` +
+            (lowQuality
+              ? ` ⚠️ Low valid coverage (${minValid}%) on at least one date — the delta may be driven by data quality, not real change. Treat with caution.`
+              : ``),
         };
         return {
           content: [
