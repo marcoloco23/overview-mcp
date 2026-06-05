@@ -10,7 +10,7 @@ reference is [CLAUDE.md](CLAUDE.md); the phase plan is [ROADMAP.md](ROADMAP.md).
 
 - Agent read full file: YES
 - Current task understood: YES
-- Current task: **Phase 3 — Copernicus core** (OAuth + `eo_render`/`eo_index`/`eo_search`)
+- Current task: **Phase 4 — Change detection** (`eo_compare`: two renders + index delta)
 - Session started: 2026-06-05
 
 ---
@@ -35,32 +35,31 @@ approval · respect API quotas/ToS · cap image size and always return stats wit
 
 ## CURRENT STATE (2026-06-05)
 
-- Repo at `~/code/tools/overview-mcp`. **Phases 0, 1, 2 complete; reviewed, hardened, and
-  visually verified.** Committed: `e394ac4` (scaffold+slice), `ad38c96` (review hardening).
-- Three tools now: `eo_snapshot` + `events` (zero key) and `fires_in` (needs `FIRMS_MAP_KEY`).
-  Build + typecheck green. Dashboard renders imagery overlays, event markers, and fire
-  markers (all screenshotted).
-- Next: **Phase 3 — Copernicus core.** New external surface (Copernicus Sentinel Hub) →
-  write a `.plans/` entry first. Needs free `CDSE_CLIENT_ID`/`CDSE_CLIENT_SECRET` to
-  smoke-test (dataspace.copernicus.eu → User Settings → OAuth client).
+- Repo at `~/code/tools/overview-mcp`. **Phases 0–3 complete; reviewed, hardened, and
+  live-verified.** All three credentials live in `.env` (gitignored): FIRMS + CDSE.
+- **Six tools now**: `eo_snapshot`, `events` (zero key); `fires_in` (FIRMS); `eo_render`,
+  `eo_index`, `eo_search` (Copernicus Sentinel-2). Build + typecheck green. Dashboard
+  renders imagery overlays, event/fire markers, NDVI index panel, and scene lists (all
+  screenshotted). Commits through `69d8135` + the Phase 3 commit.
+- Next: **Phase 4 — Change detection.** `eo_compare(bbox, dateA, dateB, index)`: two renders
+  + an index delta (e.g. mean-NDVI drop → deforestation). Reuses the Copernicus client; add
+  a `compare` card (side-by-side / swipe) to the dashboard. Write a `.plans/` entry first.
 
 ## TASK QUEUE
 
 Phase 0 — Scaffold: ✅ done
 Phase 1 — Zero-key slice: ✅ done
-Phase 2 — Fires: ✅ done + live-verified (133 real detections over the Western US)
+Phase 2 — Fires: ✅ done + live-verified (133 real detections, Western US)
+Phase 3 — Copernicus core: ✅ done + live-verified (Sentinel-2 render + NDVI 0.279 + search)
 
-Phase 3 — Copernicus core (current):
-- [ ] Write `.plans/2026-06-05_copernicus.md` (new external surface = Copernicus Sentinel Hub).
-- [ ] `src/clients/copernicus.ts` — OAuth client-credentials token endpoint
-      (`identity.dataspace.copernicus.eu/.../token`) with in-process token cache + refresh on 401.
-- [ ] `evalscripts.ts` — trueColor / falseColor / NDVI / NDWI / NBR band math.
-- [ ] `eo_search` (STAC `/catalog/1.0.0/search`), `eo_render` (Process `/process`),
-      `eo_index` (Statistical `/statistics`) tools → imagery + index cards.
-- [ ] Dashboard: an `index` card branch (stats panel) — extend `cards.ts`.
-- [ ] Smoke with real CDSE creds; update ledgers.
+Phase 4 — Change detection (current):
+- [ ] Write `.plans/2026-06-05_compare.md`.
+- [ ] `eo_compare(bbox, dateA, dateB, index="NDVI")` tool: render both dates + `statistics`
+      at each → delta (mean/median NDVI change). Reuse `CopernicusClient`.
+- [ ] Dashboard `compare` card: side-by-side or swipe of the two renders + the delta stat.
+- [ ] Live-verify over a known deforestation site (mean-NDVI drop); update ledgers.
 
-Later phases: see ROADMAP.md (change detection `eo_compare` → polish/ship).
+Later: ROADMAP Phase 5 (geo_resolve, design pass, README, publish public → idea 0005 shipped).
 
 Useful test fixtures: Amazon near Manaus bbox `[-60.2,-3.3,-59.8,-2.9]`; events smoke
 returns Tropical Storm Amanda. Run the dashboard on a non-default port to avoid clashes:
@@ -70,6 +69,17 @@ returns Tropical Storm Amanda. Run the dashboard on a non-default port to avoid 
 ---
 
 ## SESSION LOG
+
+### 2026-06-05 — Session 3 (Phase 3 Copernicus core)
+- Grounded all CDSE API shapes with live calls (OAuth 1800s; Process PNG; Statistical
+  needs dataFilter.timeRange + FLOAT32 + a fitting bucket; Catalog returns geo+json).
+- Built `copernicus.ts` (token cache + refresh-on-401), `evalscripts.ts`, and
+  `tools/analysis.ts` (`eo_render`/`eo_index`/`eo_search`) + dashboard index/search cards.
+- Fixed two live bugs: catalog 406 (Accept must be `*/*`) and empty stats (bucket length
+  must fit inside the window → `floor(span)`).
+- Live-verified with real CDSE creds: rendered 10 m Sentinel-2 of Manaus (trueColor + NDVI
+  ramp, viewed), NDVI mean 0.279, scene search with cloud %, dashboard screenshot. No-creds
+  path returns a clean error.
 
 ### 2026-06-05 — Session 2 (review/hardening + Phase 2 fires)
 - Independent code review → fixed WebGL-kills-feed, duplicate SSE connect, false-color

@@ -15,6 +15,13 @@ export function isoDate(daysAgo = 0): string {
   return d.toISOString().slice(0, 10);
 }
 
+/** Shift a YYYY-MM-DD date by `delta` days (UTC), returning YYYY-MM-DD. */
+export function addDays(dateStr: string, delta: number): string {
+  const d = new Date(`${dateStr}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + delta);
+  return d.toISOString().slice(0, 10);
+}
+
 /** Validate that a bbox is well-formed: west<east, south<north, within world bounds. */
 export function assertBBox(bbox: BBox): void {
   const [west, south, east, north] = bbox;

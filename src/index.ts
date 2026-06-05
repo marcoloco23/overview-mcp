@@ -4,6 +4,7 @@ import { SERVER_NAME, SERVER_VERSION } from "./config.js";
 import { registerImageryTools } from "./tools/imagery.js";
 import { registerEventsTools } from "./tools/events.js";
 import { registerFireTools } from "./tools/fires.js";
+import { registerAnalysisTools } from "./tools/analysis.js";
 
 export function buildServer(): McpServer {
   const server = new McpServer(
@@ -21,7 +22,8 @@ export function buildServer(): McpServer {
   registerImageryTools(server);
   registerEventsTools(server);
   registerFireTools(server);
-  // Later phases register: eo_search/eo_render/eo_index, eo_compare, geo_resolve.
+  registerAnalysisTools(server);
+  // Later phases register: eo_compare, geo_resolve.
 
   return server;
 }

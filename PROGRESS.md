@@ -5,6 +5,31 @@ status, next priorities. The live task pointer is in [CONTINUITY.md](CONTINUITY.
 
 ---
 
+## Session: 2026-06-05 (Phase 3 — Copernicus core) ✅
+
+**Focus**: High-res Sentinel-2 imagery + index statistics + scene search via Copernicus.
+
+**Done**:
+- [x] `src/clients/copernicus.ts` — `CopernicusClient`: OAuth client-credentials with an
+      in-process token cache (refresh on 401); `process()`, `statistics()`, `search()`.
+- [x] `src/evalscripts.ts` — render (trueColor/falseColor/ndvi ramp) + stat (NDVI/NDWI/NBR,
+      FLOAT32 + dataMask) evalscripts.
+- [x] `src/tools/analysis.ts` — `eo_render`, `eo_index`, `eo_search` (require CDSE creds,
+      clean error if unset), registered in `index.ts`.
+- [x] Dashboard `index` card (mean + −1..1 gradient marker + min/median/max) and `search`
+      card (scene dates + cloud %).
+
+**Build/smoke**: build + typecheck green. **Live-verified with real CDSE creds**:
+`eo_render` trueColor + NDVI of Manaus (viewed — 10 m detail, Meeting of Waters);
+`eo_index` NDVI mean 0.279 (median 0.27, p75 0.71); `eo_search` listed scenes (June 3,
+4.25% cloud); dashboard screenshot shows the Sentinel-2 overlay + index + search cards;
+no-creds path returns the clean "set CDSE_*" error. API gotchas fixed: catalog `Accept: */*`,
+stats bucket must fit inside the window + `FLOAT32` output.
+
+**Next**: Phase 4 — change detection (`eo_compare`).
+
+---
+
 ## Session: 2026-06-05 (Phase 2 — fires) ✅
 
 **Focus**: Add NASA FIRMS active-fire detections + dashboard fire markers.

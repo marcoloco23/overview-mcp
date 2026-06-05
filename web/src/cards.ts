@@ -74,6 +74,38 @@ export function renderCard(card: Card, onFocus: (card: Card) => void): HTMLEleme
     el.appendChild(summary);
   }
 
+  if (card.type === "index") {
+    const stats = card.payload.stats as
+      | { mean: number; min: number; max: number; p50: number | null; sampleCount: number }
+      | undefined;
+    const index = String(card.payload.index ?? "index");
+    if (stats) {
+      // NDVI/NDWI/NBR are all in [-1, 1]; place the mean on a gradient bar.
+      const pos = Math.max(0, Math.min(100, ((stats.mean + 1) / 2) * 100));
+      const panel = document.createElement("div");
+      panel.className = "idx-panel";
+      panel.innerHTML =
+        `<div class="idx-top"><span class="idx-name">${escapeHtml(index)}</span>` +
+        `<span class="idx-mean">${stats.mean.toFixed(3)}</span></div>` +
+        `<div class="idx-bar"><span class="idx-marker" style="left:${pos.toFixed(1)}%"></span></div>` +
+        `<div class="idx-row">min ${stats.min.toFixed(2)} · median ${(stats.p50 ?? stats.mean).toFixed(2)} · max ${stats.max.toFixed(2)}</div>`;
+      el.appendChild(panel);
+    }
+  }
+
+  if (card.type === "search") {
+    const scenes = (card.payload.scenes as Array<{ datetime: string; cloudCover: number | null }> | undefined) ?? [];
+    const list = document.createElement("ul");
+    list.className = "evt-list";
+    for (const s of scenes.slice(0, 10)) {
+      const li = document.createElement("li");
+      const cloud = s.cloudCover == null ? "—" : `${s.cloudCover.toFixed(0)}%`;
+      li.innerHTML = `<span class="evt-dot"></span>${escapeHtml((s.datetime || "").slice(0, 10))} <em>cloud ${cloud}</em>`;
+      list.appendChild(li);
+    }
+    el.appendChild(list);
+  }
+
   if (card.bbox) {
     const bb = document.createElement("div");
     bb.className = "card-bbox";

@@ -1,7 +1,7 @@
 # ROADMAP — overview-mcp
 
-**Status**: Phase 0 ✅ + Phase 1 ✅ + Phase 2 ✅ — fires shipped & verified (2026-06-05).
-Next: Phase 3 (Copernicus core).
+**Status**: Phases 0–3 ✅ — zero-key slice, fires, and Copernicus core all live-verified
+(2026-06-05). Six tools. Next: Phase 4 (change detection).
 **Goal**: ship a free, open-data Earth-observation MCP + live mission-control dashboard,
 public and `npx`-installable, mirroring the knuspr-mcp pattern.
 
@@ -69,15 +69,18 @@ Endpoints:
   Western US (and 25,543 over central Africa), rendered as markers** (screenshotted). VIIRS
   single-letter confidence (l/n/h) normalized to low/nominal/high.
 
-## Phase 3 — Copernicus core 🔜 (next)
+## Phase 3 — Copernicus core ✅
 
-- [ ] `src/clients/copernicus.ts` — OAuth client-credentials + in-process token cache (refresh on 401)
-- [ ] `src/evalscripts.ts` — trueColor / falseColor / NDVI / NDWI / NBR
-- [ ] `eo_search` (STAC), `eo_render` (Process), `eo_index` (Statistical)
-- **Done when**: `eo_render` returns higher-res Sentinel-2 imagery and `eo_index` returns
-  NDVI stats over a known bbox; both produce cards.
+- [x] `src/clients/copernicus.ts` — OAuth client-credentials + in-process token cache (refresh on 401)
+- [x] `src/evalscripts.ts` — trueColor / falseColor / NDVI render + NDVI/NDWI/NBR stat scripts
+- [x] `eo_search` (STAC), `eo_render` (Process), `eo_index` (Statistical) + dashboard index/search cards
+- **Done + live-verified** with real CDSE creds: `eo_render` trueColor/ndvi rendered 10 m
+  Sentinel-2 of Manaus (viewed); `eo_index` NDVI mean 0.279 (median 0.27, p75 0.71);
+  `eo_search` listed scenes with cloud %; no-creds path returns a clean error. Gotchas
+  solved: catalog `Accept: */*` (406 otherwise); stats need `dataFilter.timeRange` +
+  `FLOAT32` output + a bucket that fits inside the window.
 
-## Phase 4 — Change detection
+## Phase 4 — Change detection 🔜 (next)
 
 - [ ] `eo_compare` (two renders + index delta) → compare (swipe / side-by-side) card
 - **Done when**: `eo_compare` over a known deforestation site shows a mean-NDVI drop.
