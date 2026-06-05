@@ -100,9 +100,19 @@ export function renderCard(card: Card, onFocus: (card: Card) => void): HTMLEleme
     const dateB = String(card.payload.dateB ?? "B");
     const pair = document.createElement("div");
     pair.className = "cmp-pair";
-    pair.innerHTML =
-      `<figure><img class="card-img" loading="lazy" src="${card.imageUrls[0]}"><figcaption>${escapeHtml(dateA)}</figcaption></figure>` +
-      `<figure><img class="card-img" loading="lazy" src="${card.imageUrls[1]}"><figcaption>${escapeHtml(dateB)}</figcaption></figure>`;
+    // Build via DOM nodes (img.src assignment), never innerHTML — the URL embeds an id.
+    const figure = (url: string, caption: string): HTMLElement => {
+      const fig = document.createElement("figure");
+      const img = document.createElement("img");
+      img.className = "card-img";
+      img.loading = "lazy";
+      img.src = url;
+      const cap = document.createElement("figcaption");
+      cap.textContent = caption;
+      fig.append(img, cap);
+      return fig;
+    };
+    pair.append(figure(card.imageUrls[0] ?? "", dateA), figure(card.imageUrls[1] ?? "", dateB));
     el.appendChild(pair);
     if (delta) {
       const dv = delta.meanChange;

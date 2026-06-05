@@ -60,6 +60,7 @@ interface SearchOpts {
 export class CopernicusClient {
   private token: string | null = null;
   private expiresAt = 0;
+  private inflight: Promise<string> | null = null;
 
   constructor(
     private readonly clientId: string,
@@ -67,8 +68,16 @@ export class CopernicusClient {
   ) {}
 
   private async getToken(force = false): Promise<string> {
-    const now = Date.now();
-    if (!force && this.token && now < this.expiresAt - 60_000) return this.token;
+    if (!force && this.token && Date.now() < this.expiresAt - 60_000) return this.token;
+    // De-dupe concurrent refreshes (e.g. eo_compare fires 4 calls) so we only POST once.
+    if (this.inflight) return this.inflight;
+    this.inflight = this.fetchToken().finally(() => {
+      this.inflight = null;
+    });
+    return this.inflight;
+  }
+
+  private async fetchToken(): Promise<string> {
     const body = new URLSearchParams({
       grant_type: "client_credentials",
       client_id: this.clientId,
@@ -85,7 +94,7 @@ export class CopernicusClient {
     }
     const j = JSON.parse(text) as { access_token: string; expires_in?: number };
     this.token = j.access_token;
-    this.expiresAt = now + (j.expires_in ?? 600) * 1000;
+    this.expiresAt = Date.now() + (j.expires_in ?? 600) * 1000;
     return this.token;
   }
 

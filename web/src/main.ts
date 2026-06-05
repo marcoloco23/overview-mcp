@@ -34,11 +34,23 @@ function handleCard(card: Card): void {
   if (seen.has(card.id)) return; // SSE replays state on connect; de-dupe
   seen.add(card.id);
 
+  // A malformed/hostile card must not break the feed — render defensively.
+  let node: HTMLElement;
+  try {
+    node = renderCard(card, focusCard);
+  } catch (err) {
+    console.error("failed to render card", err);
+    return;
+  }
   empty.style.display = "none";
-  feed.prepend(renderCard(card, focusCard));
+  feed.prepend(node);
 
   // Auto-focus the newest card on the map.
-  focusCard(card);
+  try {
+    focusCard(card);
+  } catch (err) {
+    console.error("failed to focus card", err);
+  }
 
   // Keep the feed bounded.
   while (feed.children.length > 60) feed.removeChild(feed.lastChild as Node);

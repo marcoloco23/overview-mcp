@@ -24,7 +24,8 @@ const ALLOWED_IMAGE_MIME = new Set<string>(["image/jpeg", "image/png"]);
 function validateIngest(obj: unknown): IngestPayload {
   if (typeof obj !== "object" || obj === null) throw new Error("body must be an object");
   const o = obj as Record<string, unknown>;
-  if (typeof o.id !== "string" || !o.id) throw new Error("id required");
+  // Constrain id to a safe charset: it becomes an /img/{id} key and is embedded in the UI.
+  if (typeof o.id !== "string" || !/^[A-Za-z0-9._-]{1,128}$/.test(o.id)) throw new Error("invalid id");
   if (typeof o.type !== "string" || !CARD_TYPES.has(o.type)) throw new Error("invalid type");
   if (typeof o.ts !== "string") throw new Error("ts required");
   if (typeof o.title !== "string") throw new Error("title required");
