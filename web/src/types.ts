@@ -19,3 +19,12 @@ export interface EventItem {
   magnitude: string | null;
   link: string;
 }
+
+export interface FireItem {
+  lat: number;
+  lon: number;
+  confidence: string | number | null;
+  brightness: number | null;
+  frp: number | null;
+  acqDate: string;
+}

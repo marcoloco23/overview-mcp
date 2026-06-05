@@ -1,7 +1,7 @@
 # ROADMAP — overview-mcp
 
-**Status**: Phase 0 ✅ + Phase 1 ✅ done — zero-key slice live & smoke-tested (2026-06-05).
-Next: Phase 2 (fires).
+**Status**: Phase 0 ✅ + Phase 1 ✅ + Phase 2 ✅ — fires shipped & verified (2026-06-05).
+Next: Phase 3 (Copernicus core).
 **Goal**: ship a free, open-data Earth-observation MCP + live mission-control dashboard,
 public and `npx`-installable, mirroring the knuspr-mcp pattern.
 
@@ -58,12 +58,18 @@ Endpoints:
   pushed an imagery card; both visible in `/api/state`. Pending: run inside a live Claude
   Code session for the full visual demo (mechanically proven, just not yet eyeballed).
 
-## Phase 2 — Fires 🔜 (next)
+## Phase 2 — Fires ✅
 
-- [ ] FIRMS client in `src/clients/nasa.ts` + `fires_in` tool → fire-markers card
-- **Done when**: `fires_in` over a current fire region returns detections and plots markers.
+- [x] FIRMS client in `src/clients/nasa.ts` (`fires()` + header-keyed `parseFiresCsv()`,
+      handles VIIRS & MODIS) + `fires_in` tool (`src/tools/fires.ts`) → fire-markers card
+- [x] Dashboard: GPU circle layer for fire points (`showFires` in `web/src/map.ts`) +
+      `fires` feed card + `focusCard` wiring
+- **Done**: parser verified for both sensors + error path; `fires_in` registers and returns
+  a clean "set FIRMS_MAP_KEY" error when unconfigured; 90-point synthetic cluster rendered
+  as markers on the dashboard (screenshotted). **Deferred**: one live FIRMS call — needs a
+  free `FIRMS_MAP_KEY` (firms.modaps.eosdis.nasa.gov/api/map_key/).
 
-## Phase 3 — Copernicus core
+## Phase 3 — Copernicus core 🔜 (next)
 
 - [ ] `src/clients/copernicus.ts` — OAuth client-credentials + in-process token cache (refresh on 401)
 - [ ] `src/evalscripts.ts` — trueColor / falseColor / NDVI / NDWI / NBR

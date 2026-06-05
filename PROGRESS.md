@@ -5,6 +5,27 @@ status, next priorities. The live task pointer is in [CONTINUITY.md](CONTINUITY.
 
 ---
 
+## Session: 2026-06-05 (Phase 2 — fires) ✅
+
+**Focus**: Add NASA FIRMS active-fire detections + dashboard fire markers.
+
+**Done**:
+- [x] `fires()` + header-keyed `parseFiresCsv()` in `src/clients/nasa.ts` (one parser for
+      VIIRS `bright_ti4`/string-confidence and MODIS `brightness`/numeric-confidence).
+- [x] `fires_in` tool (`src/tools/fires.ts`), registered in `index.ts`; clean
+      "set FIRMS_MAP_KEY" error when unconfigured.
+- [x] Dashboard: GPU circle layer (`showFires` in `web/src/map.ts`) + `fires` feed card
+      (count + peak FRP) + `focusCard` wiring + styling.
+
+**Build/smoke**: build + typecheck green. Verified: parser (both sensors + "Invalid
+MAP_KEY" error path), `listTools` shows `fires_in`, no-key call returns isError with the
+help message, and a 90-point synthetic cluster renders as markers (screenshotted).
+**Deferred**: one live FIRMS fetch — needs a free `FIRMS_MAP_KEY`.
+
+**Next**: Phase 3 — Copernicus core (OAuth + `eo_render`/`eo_index`/`eo_search`).
+
+---
+
 ## Session: 2026-06-05 (full review + visual verification + hardening)
 
 **Focus**: Eyeball everything end to end and harden the hand-rolled HTTP server.

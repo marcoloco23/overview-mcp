@@ -1,4 +1,4 @@
-import type { Card, EventItem } from "./types";
+import type { Card, EventItem, FireItem } from "./types";
 
 const TYPE_LABEL: Record<Card["type"], string> = {
   imagery: "IMAGERY",
@@ -60,6 +60,18 @@ export function renderCard(card: Card, onFocus: (card: Card) => void): HTMLEleme
       list.appendChild(more);
     }
     el.appendChild(list);
+  }
+
+  if (card.type === "fires") {
+    const fires = (card.payload.fires as FireItem[] | undefined) ?? [];
+    const total = typeof card.payload.total === "number" ? card.payload.total : fires.length;
+    const maxFrp = fires.reduce((m, f) => Math.max(m, f.frp ?? 0), 0);
+    const summary = document.createElement("div");
+    summary.className = "fire-summary";
+    summary.innerHTML =
+      `<span class="fire-count">${total}</span> active-fire detection${total === 1 ? "" : "s"}` +
+      (maxFrp > 0 ? ` · peak FRP ${maxFrp.toFixed(0)} MW` : "");
+    el.appendChild(summary);
   }
 
   if (card.bbox) {

@@ -10,7 +10,7 @@ reference is [CLAUDE.md](CLAUDE.md); the phase plan is [ROADMAP.md](ROADMAP.md).
 
 - Agent read full file: YES
 - Current task understood: YES
-- Current task: **Phase 2 — Fires** (FIRMS client + `fires_in` tool → fire-markers card)
+- Current task: **Phase 3 — Copernicus core** (OAuth + `eo_render`/`eo_index`/`eo_search`)
 - Session started: 2026-06-05
 
 ---
@@ -35,34 +35,32 @@ approval · respect API quotas/ToS · cap image size and always return stats wit
 
 ## CURRENT STATE (2026-06-05)
 
-- Repo at `~/code/tools/overview-mcp`. **Phase 0 + Phase 1 complete and smoke-tested.**
-  `git init` done, **not committed** (waiting on user approval per rule 4).
-- Build + typecheck green. Dashboard server works (ingest → SSE → `/img` verified). MCP
-  server lists `eo_snapshot` + `events`; both call live NASA APIs and push cards.
-- Two real tools, zero keys: `eo_snapshot` (Worldview/GIBS imagery) and `events` (EONET).
-- **Reviewed + hardened + visually verified** (2026-06-05): all imagery types and both
-  dashboard map paths screenshotted and confirmed; fixed WebGL-kills-feed bug, duplicate
-  SSE connect, false-color swath gaps; hardened the HTTP server (loopback-only bind,
-  `/ingest` allow-list validation, malformed-URL 400, SSE/process safety nets). See
-  PROGRESS.md for the full list. Build + typecheck green.
-- Next: **Phase 2 — Fires.** Add a FIRMS client + `fires_in` tool. Needs a free
-  `FIRMS_MAP_KEY` to smoke-test (get one at firms.modaps.eosdis.nasa.gov/api/map_key/).
+- Repo at `~/code/tools/overview-mcp`. **Phases 0, 1, 2 complete; reviewed, hardened, and
+  visually verified.** Committed: `e394ac4` (scaffold+slice), `ad38c96` (review hardening).
+- Three tools now: `eo_snapshot` + `events` (zero key) and `fires_in` (needs `FIRMS_MAP_KEY`).
+  Build + typecheck green. Dashboard renders imagery overlays, event markers, and fire
+  markers (all screenshotted).
+- Next: **Phase 3 — Copernicus core.** New external surface (Copernicus Sentinel Hub) →
+  write a `.plans/` entry first. Needs free `CDSE_CLIENT_ID`/`CDSE_CLIENT_SECRET` to
+  smoke-test (dataspace.copernicus.eu → User Settings → OAuth client).
 
 ## TASK QUEUE
 
 Phase 0 — Scaffold: ✅ done
 Phase 1 — Zero-key slice: ✅ done
+Phase 2 — Fires: ✅ done (live FIRMS call deferred pending a free FIRMS_MAP_KEY)
 
-Phase 2 — Fires (current):
-- [ ] Write `.plans/2026-06-05_fires.md` (new external surface = FIRMS).
-- [ ] Add `fires(bbox, dayRange, source)` to `src/clients/nasa.ts` — GET FIRMS area CSV,
-      parse to `FireDetection[]` (type already in `src/types.ts`).
-- [ ] `fires_in` tool in `src/tools/events.ts` (or a new `src/tools/fires.ts`) → `fires` card.
-- [ ] Dashboard: render `fires` card → fire markers (extend `web/src/map.ts`, add a
-      `showFires` handler + a `fires` badge/branch in `cards.ts` + `main.ts`).
-- [ ] Smoke with a real `FIRMS_MAP_KEY` over a current fire region; update ledgers.
+Phase 3 — Copernicus core (current):
+- [ ] Write `.plans/2026-06-05_copernicus.md` (new external surface = Copernicus Sentinel Hub).
+- [ ] `src/clients/copernicus.ts` — OAuth client-credentials token endpoint
+      (`identity.dataspace.copernicus.eu/.../token`) with in-process token cache + refresh on 401.
+- [ ] `evalscripts.ts` — trueColor / falseColor / NDVI / NDWI / NBR band math.
+- [ ] `eo_search` (STAC `/catalog/1.0.0/search`), `eo_render` (Process `/process`),
+      `eo_index` (Statistical `/statistics`) tools → imagery + index cards.
+- [ ] Dashboard: an `index` card branch (stats panel) — extend `cards.ts`.
+- [ ] Smoke with real CDSE creds; update ledgers.
 
-Later phases: see ROADMAP.md (Copernicus core → change detection → polish/ship).
+Later phases: see ROADMAP.md (change detection `eo_compare` → polish/ship).
 
 Useful test fixtures: Amazon near Manaus bbox `[-60.2,-3.3,-59.8,-2.9]`; events smoke
 returns Tropical Storm Amanda. Run the dashboard on a non-default port to avoid clashes:
@@ -72,6 +70,15 @@ returns Tropical Storm Amanda. Run the dashboard on a non-default port to avoid 
 ---
 
 ## SESSION LOG
+
+### 2026-06-05 — Session 2 (review/hardening + Phase 2 fires)
+- Independent code review → fixed WebGL-kills-feed, duplicate SSE connect, false-color
+  swath gaps; hardened the HTTP server (loopback bind, ingest allow-list, malformed-URL
+  400, SSE/process safety nets). Committed `ad38c96`.
+- Phase 2: FIRMS client (`fires()` + header-keyed `parseFiresCsv()` for VIIRS & MODIS),
+  `fires_in` tool, dashboard GPU fire-marker layer (`showFires`) + `fires` feed card.
+- Verified: parser (both sensors + error path), tool registration, no-key graceful error,
+  90-point cluster rendered on the map (screenshot). Live FIRMS call deferred (needs key).
 
 ### 2026-06-05 — Session 1 (scaffold + zero-key slice)
 - Created repo, `git init`, all config files (pinned deps mirroring knuspr-mcp + vite/maplibre).

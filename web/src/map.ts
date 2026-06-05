@@ -1,5 +1,5 @@
 import maplibregl from "maplibre-gl";
-import type { BBox, Card, EventItem } from "./types";
+import type { BBox, Card, EventItem, FireItem } from "./types";
 
 // NASA GIBS Blue Marble (static, no API key) as a reliable, beautiful basemap.
 const GIBS_BASEMAP =
@@ -8,6 +8,7 @@ const GIBS_BASEMAP =
 let map: maplibregl.Map | null = null;
 const overlayIds: string[] = [];
 let eventMarkers: maplibregl.Marker[] = [];
+const FIRE_LAYER = "fires-src";
 
 /**
  * Initialize the MapLibre map. Returns false (without throwing) if the browser can't
@@ -131,6 +132,55 @@ export function showEvents(card: Card): void {
   }
 }
 
+/** Plot fire detections as a GPU circle layer (handles hundreds of points cheaply). */
+export function showFires(card: Card): void {
+  const m = map;
+  if (!m) return;
+  const fires = (card.payload.fires as FireItem[] | undefined) ?? [];
+  const data: GeoJSON.FeatureCollection = {
+    type: "FeatureCollection",
+    features: fires.map((f) => ({
+      type: "Feature",
+      geometry: { type: "Point", coordinates: [f.lon, f.lat] },
+      properties: { confidence: String(f.confidence ?? ""), frp: f.frp ?? 0, acqDate: f.acqDate },
+    })),
+  };
+
+  const src = m.getSource(FIRE_LAYER) as maplibregl.GeoJSONSource | undefined;
+  if (src) {
+    src.setData(data);
+  } else {
+    m.addSource(FIRE_LAYER, { type: "geojson", data });
+    m.addLayer({
+      id: FIRE_LAYER,
+      type: "circle",
+      source: FIRE_LAYER,
+      paint: {
+        "circle-radius": ["interpolate", ["linear"], ["zoom"], 2, 2.5, 8, 5.5],
+        "circle-color": "#f97316",
+        "circle-opacity": 0.85,
+        "circle-stroke-color": "#fde68a",
+        "circle-stroke-width": 0.5,
+      },
+    });
+    m.on("click", FIRE_LAYER, (e) => {
+      const feat = e.features?.[0];
+      if (!feat || feat.geometry.type !== "Point") return;
+      const p = feat.properties ?? {};
+      new maplibregl.Popup({ offset: 8, closeButton: false })
+        .setLngLat(feat.geometry.coordinates as [number, number])
+        .setHTML(
+          `<strong>Fire detection</strong><br>confidence: ${escapeHtml(String(p.confidence ?? ""))}` +
+            `<br>FRP: ${escapeHtml(String(p.frp ?? ""))} MW` +
+            `<br><span class="evt-date">${escapeHtml(String(p.acqDate ?? ""))}</span>`,
+        )
+        .addTo(m);
+    });
+  }
+
+  if (card.bbox) fitBBox(card.bbox);
+}
+
 export function clearOverlays(): void {
   if (!map) {
     overlayIds.length = 0;
@@ -143,6 +193,8 @@ export function clearOverlays(): void {
   overlayIds.length = 0;
   for (const m of eventMarkers) m.remove();
   eventMarkers = [];
+  if (map.getLayer(FIRE_LAYER)) map.removeLayer(FIRE_LAYER);
+  if (map.getSource(FIRE_LAYER)) map.removeSource(FIRE_LAYER);
 }
 
 function escapeHtml(s: string): string {

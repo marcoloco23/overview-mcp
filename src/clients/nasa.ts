@@ -1,10 +1,19 @@
 import { USER_AGENT } from "../config.js";
 import { OverviewError } from "../errors.js";
-import type { BBox, EonetEvent } from "../types.js";
+import type { BBox, EonetEvent, FireDetection } from "../types.js";
 import { assertBBox, clampWidth, heightFor } from "../util.js";
 
 const WORLDVIEW_SNAPSHOT = "https://wvs.earthdata.nasa.gov/api/v1/snapshot";
 const EONET_EVENTS = "https://eonet.gsfc.nasa.gov/api/v3/events";
+const FIRMS_AREA = "https://firms.modaps.eosdis.nasa.gov/api/area/csv";
+
+/** NASA FIRMS data sources (near-real-time). */
+export const FIRMS_SOURCES = [
+  "VIIRS_SNPP_NRT",
+  "VIIRS_NOAA20_NRT",
+  "VIIRS_NOAA21_NRT",
+  "MODIS_NRT",
+] as const;
 
 /**
  * Friendly view name → ordered GIBS layer ids (first = bottom). No API key needed.
@@ -136,6 +145,87 @@ export async function events(query: EventsQuery = {}): Promise<EonetEvent[]> {
   }
   const data = (await res.json()) as { events?: RawEvent[] };
   return (data.events ?? []).map(normalizeEvent);
+}
+
+export interface FiresQuery {
+  dayRange?: number;
+  source?: string;
+  date?: string;
+}
+
+/**
+ * Fetch active-fire detections from NASA FIRMS for a bbox. Requires a (free) map key.
+ * Area axis order is west,south,east,north — same as our internal BBox.
+ */
+export async function fires(
+  mapKey: string,
+  bbox: BBox,
+  query: FiresQuery = {},
+): Promise<FireDetection[]> {
+  assertBBox(bbox);
+  const [west, south, east, north] = bbox;
+  const source = query.source ?? "VIIRS_SNPP_NRT";
+  const dayRange = Math.max(1, Math.min(10, Math.round(query.dayRange ?? 1)));
+  const area = `${west},${south},${east},${north}`;
+  let url = `${FIRMS_AREA}/${mapKey}/${source}/${area}/${dayRange}`;
+  if (query.date) url += `/${query.date}`;
+
+  const res = await fetch(url, { headers: { "user-agent": USER_AGENT } });
+  const text = await res.text();
+  if (!res.ok) {
+    throw new OverviewError(`FIRMS request failed (${res.status})`, res.status, text.slice(0, 300));
+  }
+  return parseFiresCsv(text);
+}
+
+function toNum(s: string | undefined): number | null {
+  if (s == null || s === "") return null;
+  const n = Number(s);
+  return Number.isFinite(n) ? n : null;
+}
+
+/** Parse a FIRMS CSV (VIIRS or MODIS) by header name so one parser handles both sensors. */
+export function parseFiresCsv(csv: string): FireDetection[] {
+  const lines = csv.trim().split(/\r?\n/);
+  const head = lines[0];
+  if (!head) return [];
+  const header = head.split(",").map((h) => h.trim().toLowerCase());
+  if (!header.includes("latitude") || !header.includes("longitude")) {
+    // FIRMS returns plain-text errors (e.g. "Invalid MAP_KEY") instead of CSV.
+    throw new OverviewError(`unexpected FIRMS response: ${head.slice(0, 200)}`);
+  }
+  const at = (name: string) => header.indexOf(name);
+  const iLat = at("latitude");
+  const iLon = at("longitude");
+  const iBright = header.includes("bright_ti4") ? at("bright_ti4") : at("brightness");
+  const iConf = at("confidence");
+  const iDate = at("acq_date");
+  const iTime = at("acq_time");
+  const iFrp = at("frp");
+  const iSat = at("satellite");
+
+  const out: FireDetection[] = [];
+  for (let i = 1; i < lines.length; i++) {
+    const row = lines[i];
+    if (!row) continue;
+    const c = row.split(",");
+    const lat = toNum(c[iLat]);
+    const lon = toNum(c[iLon]);
+    if (lat === null || lon === null) continue;
+    const rawConf = iConf >= 0 ? (c[iConf]?.trim() ?? "") : "";
+    const confNum = Number(rawConf);
+    out.push({
+      lat,
+      lon,
+      brightness: iBright >= 0 ? toNum(c[iBright]) : null,
+      confidence: rawConf === "" ? null : Number.isFinite(confNum) ? confNum : rawConf,
+      acqDate: iDate >= 0 ? (c[iDate]?.trim() ?? "") : "",
+      acqTime: iTime >= 0 ? (c[iTime]?.trim() ?? null) : null,
+      frp: iFrp >= 0 ? toNum(c[iFrp]) : null,
+      satellite: iSat >= 0 ? (c[iSat]?.trim() ?? null) : null,
+    });
+  }
+  return out;
 }
 
 function normalizeEvent(e: RawEvent): EonetEvent {
