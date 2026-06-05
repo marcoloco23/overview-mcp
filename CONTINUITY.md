@@ -10,7 +10,8 @@ reference is [CLAUDE.md](CLAUDE.md); the phase plan is [ROADMAP.md](ROADMAP.md).
 
 - Agent read full file: YES
 - Current task understood: YES
-- Current task: **SHIPPED** ✅ — v0.1.0 public. Optional post-ship backlog in ROADMAP.md.
+- Current task: **v0.1 shipped (Horizon 0).** Strategy set in [VISION.md](VISION.md);
+  **Horizon 1 is next** (cloud masking upgrade, Sentinel-1 SAR, provenance, AlphaEarth embeddings).
 - Session started: 2026-06-05
 
 ---

@@ -1,6 +1,11 @@
 # ROADMAP — overview-mcp
 
-**Status**: ✅ SHIPPED v0.1.0 — public at https://github.com/marcoloco23/overview-mcp
+> **The 5-year strategy lives in [VISION.md](VISION.md)** — north-star (the *AI Environmental
+> Watchdog*), the moat (cumulative monitoring history + trust), wedges (EUDR, methane), the
+> capability pillars, the data/AI stack, and the Horizon 0→5 plan. This file is the near-term
+> tactical tracker. v0.1 (Horizon 0) is shipped; **Horizon 1 is next (see bottom).**
+
+**Status**: ✅ SHIPPED v0.1.0 (Horizon 0) — public at https://github.com/marcoloco23/overview-mcp
 (2026-06-05). All 5 phases done, 8 tools, all live-verified; fresh `npx` install confirmed.
 **Goal**: ship a free, open-data Earth-observation MCP + live mission-control dashboard,
 public and `npx`-installable, mirroring the knuspr-mcp pattern.
@@ -100,13 +105,37 @@ Endpoints:
 - [x] Inventions idea 0005 → `shipped`
 - **Done** ✅: a fresh `npx` install builds and runs.
 
-## Post-ship backlog (optional)
+## Horizon 1 — Trustworthy analyst (next, ≈ months 0–6) — see [VISION.md](VISION.md) §7
+
+All free / low-or-no GPU. Highest-leverage first:
+
+- [ ] **Better cloud masking** — Cloud Score+ / s2cloudless / OmniCloudMask behind
+      `eo_index`/`eo_render`/`eo_compare` (big reliability jump over SCL; keep %-valid flag).
+- [ ] **Sentinel-1 SAR** — GRD backscatter render + flood/water mapping (`sar_*` tools).
+      The start of all-weather; SAR sees through cloud/smoke/night. (Closes our #1 weakness.)
+- [ ] **Provenance block** on every numeric output (scene IDs, dates, sensor, baseline,
+      mask method, % valid) — reframe outputs as decision-support.
+- [ ] **Classic change detection** as tools: temporal median compositing, CCDC/BFAST/LandTrendr.
+- [ ] **Consume GFW alerts** (GLAD-L/GLAD-S2/RADD/DIST-ALERT) instead of rebuilding deforestation.
+- [ ] **Internal STAC + COG layer** (Earth Search + Planetary Computer); GEE as research backend.
+
+## Horizon 2 — The planet becomes searchable (≈ months 6–12)
+
+- [ ] **AlphaEarth Satellite Embedding** (CC-BY, no GPU) → `eo_similar` ("find everywhere like
+      this") + embedding-difference change detection + few-shot classification.
+- [ ] **pgvector** embedding index alongside STAC.
+- [ ] **`eo_detect`** — text-promptable detection/segmentation (samgeo + Grounding DINO + SAM).
+- [ ] **State-machine agentic orchestrator** over the MCP tools (Geo-OLM pattern, ~100× cheaper).
+
+Horizons 3–5 (the Watchdog monitoring platform, verticalization, marketplace/system-of-record):
+see [VISION.md](VISION.md) §7.
+
+## Tidy-up backlog (low priority)
 
 - Dashboard design pass (frontend-design skill) if a visual refresh is wanted.
 - `eo_compare` swipe slider on the map (currently overlays the "after" image).
 - Publish to npm (currently `npx github:` install); add CI.
 - More FIRMS sources / MODIS false-color option; antimeridian bbox support.
-- [done 2026-06-05] SCL cloud+shadow+water masking in index stats + a %-valid quality flag (surfaced live-test fix).
 - Transient-failure retry for the no-key NASA fetches (EONET occasionally throttles under
-  hammering). Sub-2-day stats-window guard (`P{n}D` overshoot). Evict images by card, not
-  count, so old compare-card thumbnails don't 404. (All from the final review — low priority.)
+  hammering). Sub-2-day stats-window guard. Evict images by card, not count.
+- [done 2026-06-05] SCL cloud+shadow+water masking + %-valid quality flag.
