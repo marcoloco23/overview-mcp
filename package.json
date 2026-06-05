@@ -1,0 +1,66 @@
+{
+  "name": "overview-mcp",
+  "version": "0.1.0",
+  "description": "Earth-observation MCP server + live mission-control dashboard. Give Claude eyes on Earth: pull satellite imagery, compute vegetation/water/burn indices, surface live wildfires and disasters, and diff a place across time — over free, open Copernicus and NASA data.",
+  "license": "MIT",
+  "author": "marcoloco23",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/marcoloco23/overview-mcp.git"
+  },
+  "homepage": "https://github.com/marcoloco23/overview-mcp#readme",
+  "bugs": "https://github.com/marcoloco23/overview-mcp/issues",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "claude",
+    "satellite",
+    "earth-observation",
+    "remote-sensing",
+    "sentinel",
+    "copernicus",
+    "nasa",
+    "ndvi",
+    "wildfire",
+    "dashboard"
+  ],
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "overview-mcp": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc && vite build",
+    "build:server": "tsc",
+    "build:web": "vite build",
+    "dev": "tsx src/cli.ts",
+    "dev:dashboard": "tsx src/cli.ts dashboard",
+    "dev:web": "vite",
+    "start": "node dist/cli.js",
+    "dashboard": "node dist/cli.js dashboard",
+    "prepare": "tsc && vite build",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.29.0",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "25.9.0",
+    "maplibre-gl": "5.8.0",
+    "tsx": "4.22.2",
+    "typescript": "6.0.3",
+    "vite": "7.1.5"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild"]
+  }
+}

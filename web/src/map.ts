@@ -1,0 +1,132 @@
+import maplibregl from "maplibre-gl";
+import type { BBox, Card, EventItem } from "./types";
+
+// NASA GIBS Blue Marble (static, no API key) as a reliable, beautiful basemap.
+const GIBS_BASEMAP =
+  "https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/BlueMarble_ShadedRelief_Bathymetry/default/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpeg";
+
+let map: maplibregl.Map;
+let overlayCount = 0;
+const overlayIds: string[] = [];
+let eventMarkers: maplibregl.Marker[] = [];
+
+export function createMap(): maplibregl.Map {
+  map = new maplibregl.Map({
+    container: "map",
+    style: {
+      version: 8,
+      sources: {
+        gibs: {
+          type: "raster",
+          tiles: [GIBS_BASEMAP],
+          tileSize: 256,
+          maxzoom: 8,
+          attribution: "NASA EOSDIS GIBS",
+        },
+      },
+      layers: [{ id: "gibs", type: "raster", source: "gibs" }],
+    },
+    center: [0, 20],
+    zoom: 1.4,
+    attributionControl: { compact: true },
+  });
+  map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-right");
+  return map;
+}
+
+function fitBBox(bbox: BBox): void {
+  const [w, s, e, n] = bbox;
+  map.fitBounds(
+    [
+      [w, s],
+      [e, n],
+    ],
+    { padding: 60, duration: 900, maxZoom: 9 },
+  );
+}
+
+/** Drop a rendered image as a georeferenced overlay and fly to it. */
+export function showImagery(card: Card): void {
+  if (!card.bbox || !card.imageUrl) return;
+  const [w, s, e, n] = card.bbox;
+  const id = `ov-${card.id}`;
+  if (map.getSource(id)) return;
+
+  map.addSource(id, {
+    type: "image",
+    url: card.imageUrl,
+    coordinates: [
+      [w, n],
+      [e, n],
+      [e, s],
+      [w, s],
+    ],
+  });
+  map.addLayer({ id, type: "raster", source: id, paint: { "raster-opacity": 0.92, "raster-fade-duration": 300 } });
+  overlayIds.push(id);
+  overlayCount++;
+
+  // Cap overlays to keep the map light.
+  while (overlayIds.length > 12) {
+    const old = overlayIds.shift();
+    if (old && map.getLayer(old)) map.removeLayer(old);
+    if (old && map.getSource(old)) map.removeSource(old);
+  }
+  fitBBox(card.bbox);
+}
+
+const CATEGORY_COLOR: Record<string, string> = {
+  Wildfires: "#f97316",
+  "Severe Storms": "#38bdf8",
+  Volcanoes: "#ef4444",
+  Floods: "#3b82f6",
+  "Sea and Lake Ice": "#a5f3fc",
+  "Dust and Haze": "#d6b370",
+  Earthquakes: "#a78bfa",
+  Landslides: "#b45309",
+};
+
+/** Plot event points as colored markers, replacing the previous event layer. */
+export function showEvents(card: Card): void {
+  for (const m of eventMarkers) m.remove();
+  eventMarkers = [];
+
+  const events = (card.payload.events as EventItem[] | undefined) ?? [];
+  const pts: [number, number][] = [];
+  for (const ev of events) {
+    if (!ev.coordinates) continue;
+    const [lon, lat] = ev.coordinates;
+    pts.push([lon, lat]);
+    const el = document.createElement("div");
+    el.className = "evt-marker";
+    el.style.background = CATEGORY_COLOR[ev.category] ?? "#22d3ee";
+    const popup = new maplibregl.Popup({ offset: 12, closeButton: false }).setHTML(
+      `<strong>${escapeHtml(ev.title)}</strong><br><span class="evt-cat">${escapeHtml(ev.category)}</span>` +
+        (ev.magnitude ? `<br>${escapeHtml(ev.magnitude)}` : "") +
+        (ev.lastDate ? `<br><span class="evt-date">${escapeHtml(ev.lastDate)}</span>` : ""),
+    );
+    eventMarkers.push(new maplibregl.Marker({ element: el }).setLngLat([lon, lat]).setPopup(popup).addTo(map));
+  }
+
+  if (card.bbox) {
+    fitBBox(card.bbox);
+  } else if (pts.length > 0) {
+    const b = new maplibregl.LngLatBounds(pts[0], pts[0]);
+    for (const p of pts) b.extend(p);
+    map.fitBounds(b, { padding: 80, duration: 900, maxZoom: 6 });
+  }
+}
+
+export function clearOverlays(): void {
+  for (const id of overlayIds) {
+    if (map.getLayer(id)) map.removeLayer(id);
+    if (map.getSource(id)) map.removeSource(id);
+  }
+  overlayIds.length = 0;
+  for (const m of eventMarkers) m.remove();
+  eventMarkers = [];
+}
+
+function escapeHtml(s: string): string {
+  return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
+}

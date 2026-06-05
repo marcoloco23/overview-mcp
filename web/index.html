@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>overview-mcp · mission control</title>
+  </head>
+  <body>
+    <div id="app">
+      <header id="topbar">
+        <span class="logo">◉ overview-mcp</span>
+        <span class="tagline">mission control — live Earth observation</span>
+        <span id="status" class="status status--off">connecting…</span>
+      </header>
+      <main id="stage">
+        <div id="map"></div>
+        <aside id="sidebar">
+          <div id="feed-head">
+            <span>Feed</span>
+            <button id="clear" title="Clear feed">clear</button>
+          </div>
+          <div id="feed"></div>
+          <div id="empty">Waiting for Claude. Ask it to look at a place — imagery, events, and analysis will stream in here.</div>
+        </aside>
+      </main>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

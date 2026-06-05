@@ -1,0 +1,15 @@
+node_modules/
+dist/
+*.tsbuildinfo
+
+.env
+.env.local
+
+.DS_Store
+*.log
+pnpm-debug.log*
+npm-debug.log*
+
+.vscode/
+.idea/
+*.swp
