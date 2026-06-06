@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { s2Provenance } from "../src/provenance.js";
+import { s2Provenance, sarProvenance } from "../src/provenance.js";
 import type { BBox } from "../src/types.js";
 
 const BBOX: BBox = [-60.2, -3.3, -59.8, -2.9];
@@ -36,6 +36,18 @@ test("image-kind provenance is an unmasked mosaic: no validPct, no excluded clas
   assert.equal(p.cloudMask.validPct, undefined);
   assert.equal(p.cloudMask.excludedClasses.length, 0);
   assert.match(p.cloudMask.method, /mosaic/);
+  assert.match(p.disclaimer, /^Decision-support/);
+});
+
+test("sarProvenance describes an all-weather sensor with no cloud mask", () => {
+  const p = sarProvenance({ bbox: BBOX, from: "2025-05-17", to: "2025-05-31", polarization: "DV", orbitDirection: "ASCENDING" });
+  assert.equal(p.collection, "sentinel-1-grd");
+  assert.match(p.sensor, /Sentinel-1/);
+  assert.match(p.cloudMask.method, /all-weather/);
+  assert.match(p.cloudMask.method, /ASCENDING orbit/);
+  assert.equal(p.cloudMask.excludedClasses.length, 0);
+  assert.equal(p.cloudMask.validPct, undefined);
+  assert.equal(p.composite.mosaicking, "mostRecent");
   assert.match(p.disclaimer, /^Decision-support/);
 });
 

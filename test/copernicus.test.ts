@@ -101,6 +101,51 @@ test("process returns the image bytes and sends a bearer token", async (t) => {
   assert.equal(shCall.headers["authorization"], "Bearer TKN");
 });
 
+test("process targets Sentinel-2 L2A by default (leastCC + maxCloudCoverage, no processing)", async (t) => {
+  const fetchMock = mockFetch((url) => (isToken(url) ? jsonResponse({ access_token: "TKN", expires_in: 3600 }) : binaryResponse(Buffer.from([1]), "image/png")));
+  t.after(() => fetchMock.restore());
+
+  const client = new CopernicusClient("id", "secret");
+  await client.process(BBOX, { dateFrom: "2025-05-01", dateTo: "2025-05-31", evalscript: "x", width: 256, height: 256, maxCloud: 20 });
+
+  const body = JSON.parse(fetchMock.calls.find((c) => c.url.includes("/process"))!.body!);
+  const entry = body.input.data[0];
+  assert.equal(entry.type, "sentinel-2-l2a");
+  assert.equal(entry.dataFilter.mosaickingOrder, "leastCC");
+  assert.equal(entry.dataFilter.maxCloudCoverage, 20);
+  assert.equal(entry.processing, undefined, "S2 path adds no processing block");
+});
+
+test("process targets Sentinel-1 GRD when given a SAR source spec", async (t) => {
+  const fetchMock = mockFetch((url) => (isToken(url) ? jsonResponse({ access_token: "TKN", expires_in: 3600 }) : binaryResponse(Buffer.from([1]), "image/png")));
+  t.after(() => fetchMock.restore());
+
+  const client = new CopernicusClient("id", "secret");
+  await client.process(BBOX, {
+    dateFrom: "2025-05-17",
+    dateTo: "2025-05-31",
+    evalscript: "x",
+    width: 256,
+    height: 256,
+    source: {
+      collection: "sentinel-1-grd",
+      mosaickingOrder: "mostRecent",
+      dataFilter: { acquisitionMode: "IW", polarization: "DV", resolution: "HIGH" },
+      processing: { orthorectify: true, backCoeff: "GAMMA0_TERRAIN" },
+    },
+  });
+
+  const body = JSON.parse(fetchMock.calls.find((c) => c.url.includes("/process"))!.body!);
+  const entry = body.input.data[0];
+  assert.equal(entry.type, "sentinel-1-grd");
+  assert.equal(entry.dataFilter.mosaickingOrder, "mostRecent");
+  assert.equal(entry.dataFilter.polarization, "DV");
+  assert.equal(entry.dataFilter.acquisitionMode, "IW");
+  assert.equal(entry.dataFilter.maxCloudCoverage, undefined, "SAR has no cloud filter");
+  assert.deepEqual(entry.processing, { orthorectify: true, backCoeff: "GAMMA0_TERRAIN" });
+  assert.ok(entry.dataFilter.timeRange.from.startsWith("2025-05-17"));
+});
+
 test("search parses scenes, filters by maxCloud, and uses Accept: */*", async (t) => {
   const features = {
     features: [

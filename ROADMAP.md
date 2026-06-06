@@ -24,6 +24,7 @@ Env: `CDSE_CLIENT_ID`/`CDSE_CLIENT_SECRET` (Copernicus), `FIRMS_MAP_KEY` (fires)
 | `eo_search(bbox, dateFrom, dateTo, collection="sentinel-2-l2a", maxCloud=20)` | Copernicus Catalog/STAC | OAuth | search |
 | `eo_snapshot(bbox, date, layers="trueColor", width=1024)` | NASA Worldview Snapshots | none | imagery |
 | `eo_render(bbox, date, view="trueColor"\|"falseColor"\|"ndvi", width=1024)` | Copernicus Process + evalscript | OAuth | imagery |
+| `sar_render(bbox, date, view="falseColor"\|"vv"\|"vh", windowDays=14, orbitDirection?)` | Copernicus Process (Sentinel-1 GRD) | OAuth | imagery |
 | `eo_index(bbox, date, index="NDVI"\|"NDWI"\|"NBR")` | Copernicus Statistical | OAuth | index |
 | `fires_in(bbox, dayRange=1, source="VIIRS_SNPP_NRT")` | NASA FIRMS area | map key | fires |
 | `events(category?, status="open", bbox?, days=30)` | NASA EONET v3 | none | events |
@@ -113,8 +114,10 @@ All free / low-or-no GPU. Highest-leverage first:
 
 - [ ] **Better cloud masking** — Cloud Score+ / s2cloudless / OmniCloudMask behind
       `eo_index`/`eo_render`/`eo_compare` (big reliability jump over SCL; keep %-valid flag).
-- [ ] **Sentinel-1 SAR** — GRD backscatter render + flood/water mapping (`sar_*` tools).
-      The start of all-weather; SAR sees through cloud/smoke/night. (Closes our #1 weakness.)
+- [~] **Sentinel-1 SAR** — `sar_render` (GRD backscatter, GAMMA0 terrain-corrected; VV/VH/
+      false-color), via a generalized multi-collection Copernicus client. Offline-verified
+      (evalscripts + S1/S2 request-body shape + provenance, 57 tests); ⚠️ live render + viz-gain
+      tuning deferred (no creds/network). TODO next: SAR flood/water mapping + a `sar_*` stat tool.
 - [x] **Provenance block** on every numeric/imagery output (data source, sensor/collection,
       composite window + mosaicking, cloud-mask method + masked SCL classes, % valid,
       best-effort contributing scene IDs, bbox, retrieved-at, decision-support disclaimer).

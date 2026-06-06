@@ -26,6 +26,33 @@ function evaluatePixel(s){
 }`,
 };
 
+/**
+ * Visualization evalscripts for Sentinel-1 GRD (`sar_render`). Inputs are GAMMA0
+ * terrain-corrected linear backscatter (VV/VH). We apply a sqrt stretch (a cheap dB-like
+ * compression of SAR's wide dynamic range) with modest gains — a sensible starting point to
+ * tune against real scenes. SAR has no cloud concept: bright = rough/urban/forest, dark =
+ * smooth/calm-water.
+ */
+export const SAR_EVALSCRIPTS: Record<string, string> = {
+  // Co-pol VV backscatter, grayscale.
+  vv: `//VERSION=3
+function setup(){return {input:["VV"],output:{bands:3}}}
+function evaluatePixel(s){var v=Math.sqrt(Math.max(0,s.VV))*1.5;return [v,v,v]}`,
+
+  // Cross-pol VH backscatter (volume scattering → vegetation), grayscale.
+  vh: `//VERSION=3
+function setup(){return {input:["VH"],output:{bands:3}}}
+function evaluatePixel(s){var v=Math.sqrt(Math.max(0,s.VH))*2.5;return [v,v,v]}`,
+
+  // False color: R=VV, G=VH, B=VV/VH ratio — urban bright, vegetation greenish, water dark.
+  falseColor: `//VERSION=3
+function setup(){return {input:["VV","VH"],output:{bands:3}}}
+function evaluatePixel(s){
+  var vv=Math.max(0,s.VV), vh=Math.max(0,s.VH);
+  return [Math.sqrt(vv)*1.5, Math.sqrt(vh)*2.5, (vv/(vh+1e-6))*0.1];
+}`,
+};
+
 /** Normalized-difference index definitions for the Statistical API. */
 const INDEX_BANDS: Record<string, [string, string]> = {
   NDVI: ["B08", "B04"], // (NIR - Red)/(NIR + Red)

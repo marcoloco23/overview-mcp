@@ -5,6 +5,35 @@ status, next priorities. The live task pointer is in [CONTINUITY.md](CONTINUITY.
 
 ---
 
+## Session: 2026-06-06 (Horizon 1 — Sentinel-1 SAR) ✅
+
+**Focus**: Sentinel-1 C-band SAR backscatter rendering (`sar_render`) — all-weather imagery
+that sees through cloud, smoke, and night. VISION's #1 weakness ("the cloud answer");
+ROADMAP Horizon 1 item 2. Built + tested offline; live render deferred (no creds/network).
+
+**Done**:
+- [x] `sar_render(bbox, date?, view?, windowDays?, orbitDirection?, width?)` — views
+      falseColor (VV/VH/ratio), vv, vh; GAMMA0 terrain-corrected, most-recent scene in a
+      lookback window. Image + provenance + imagery card.
+- [x] Generalized `CopernicusClient` to target any collection: a `DataSourceSpec`
+      (`collection`/`mosaickingOrder`/`dataFilter`/`processing`/`maxCloud`) drives `buildInput`;
+      S2 callers use `s2Source()`, which reproduces the **exact previous request body**
+      (deep-equality test guards the refactor). `ProcessOpts.source?` threads it through.
+- [x] `SAR_EVALSCRIPTS` (sqrt-stretch viz over VV/VH) + `sarProvenance` — SAR has no cloud
+      mask, so `cloudMask.method` records "all-weather" as the advantage, with a SAR-specific
+      disclaimer (speckle, incidence-angle/orbit sensitivity).
+
+**Build/smoke**: 57 tests green (4 new: SAR evalscripts, S1 vs S2 `/process` request body,
+SAR provenance); typecheck (src + test) + build green; MCP lists 10 tools; `sar_render`
+without creds returns the clean "set CDSE_*" error. **Live S1 render + visualization-gain
+tuning deferred** (no creds/network) — gains are a documented starting point to tune against
+real scenes.
+
+**Next**: SAR flood/water mapping + a `sar_*` stat tool; cloud-masking upgrade (#1); and
+live-verify the SAR render once creds/network exist.
+
+---
+
 ## Session: 2026-06-06 (offline test suite + CI) ✅
 
 **Focus**: A way to make **verified progress fully offline** (no network, no creds) — the

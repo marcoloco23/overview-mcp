@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { INDEX_NAMES, maskedClassesFor, SCL_CLEAR_MASK, statEvalscript } from "../src/evalscripts.js";
+import { INDEX_NAMES, maskedClassesFor, SAR_EVALSCRIPTS, SCL_CLEAR_MASK, statEvalscript } from "../src/evalscripts.js";
 
 test("INDEX_NAMES are the three supported indices", () => {
   assert.deepEqual(INDEX_NAMES.sort(), ["NBR", "NDVI", "NDWI"]);
@@ -37,6 +37,17 @@ test("statEvalscript uses the correct bands per index and is a valid v3 script",
 
 test("statEvalscript throws on an unknown index", () => {
   assert.throws(() => statEvalscript("EVI"), /unknown index 'EVI'/);
+});
+
+test("SAR_EVALSCRIPTS provide vv/vh/falseColor over Sentinel-1 VV/VH bands", () => {
+  assert.deepEqual(Object.keys(SAR_EVALSCRIPTS).sort(), ["falseColor", "vh", "vv"]);
+  for (const [view, script] of Object.entries(SAR_EVALSCRIPTS)) {
+    assert.ok(script.includes("//VERSION=3"), `${view} is a v3 script`);
+    assert.ok(/output:\{bands:3\}/.test(script), `${view} outputs an RGB image`);
+  }
+  assert.ok(SAR_EVALSCRIPTS.vv!.includes('"VV"') && !SAR_EVALSCRIPTS.vv!.includes('"VH"'));
+  assert.ok(SAR_EVALSCRIPTS.vh!.includes('"VH"'));
+  assert.ok(SAR_EVALSCRIPTS.falseColor!.includes('"VV"') && SAR_EVALSCRIPTS.falseColor!.includes('"VH"'));
 });
 
 test("maskedClassesFor lists 6 classes for NDVI/NBR and 5 for NDWI", () => {

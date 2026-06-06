@@ -88,3 +88,35 @@ export function s2Provenance(opts: {
   if (opts.scenes && opts.scenes.length > 0) prov.scenes = opts.scenes;
   return prov;
 }
+
+const SAR_DISCLAIMER =
+  "Decision-support, not decision. Sentinel-1 γ⁰ (GAMMA0, terrain-corrected) backscatter is " +
+  "all-weather but speckle-prone and sensitive to incidence angle and orbit direction; compare " +
+  "only like orbit directions, and treat single-scene brightness qualitatively.";
+
+/**
+ * Provenance for a Sentinel-1 SAR result. SAR is all-weather (sees through cloud/smoke/night),
+ * so there is no cloud mask — `cloudMask.method` records that explicitly as the key advantage.
+ */
+export function sarProvenance(opts: {
+  bbox: BBox;
+  from: string;
+  to: string;
+  polarization: string;
+  orbitDirection?: string;
+}): Provenance {
+  const method =
+    `n/a — Sentinel-1 SAR is all-weather (penetrates cloud, smoke, night)` +
+    `; polarization ${opts.polarization}` +
+    (opts.orbitDirection ? `, ${opts.orbitDirection} orbit` : "");
+  return {
+    dataSource: DATA_SOURCE,
+    sensor: "Sentinel-1 C-band SAR (GRD), GAMMA0 terrain-corrected, ~10 m",
+    collection: "sentinel-1-grd",
+    composite: { from: opts.from, to: opts.to, mosaicking: "mostRecent" },
+    cloudMask: { method, excludedClasses: [] },
+    bbox: opts.bbox,
+    retrievedAt: nowIso(),
+    disclaimer: SAR_DISCLAIMER,
+  };
+}

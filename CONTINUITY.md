@@ -10,11 +10,11 @@ reference is [CLAUDE.md](CLAUDE.md); the phase plan is [ROADMAP.md](ROADMAP.md).
 
 - Agent read full file: YES
 - Current task understood: YES
-- Current task: **Horizon 1 in progress + offline test infra landed.** This session shipped:
-  provenance block (item 3), internal STAC layer (item 6, `stac_search`), and an **offline
-  test suite + CI** so we can make *verified* progress with no network/creds. Remaining
-  Horizon 1 items (cloud masking #1, SAR #2, classic change detection #4) still need live
-  CDSE creds + outbound network. Strategy in [VISION.md](VISION.md).
+- Current task: **Horizon 1 well underway.** This session shipped: provenance block (item 3),
+  internal STAC layer (item 6, `stac_search`), an **offline test suite + CI**, and **Sentinel-1
+  SAR** (`sar_render`, item 2 — structurally; the #1 weakness). 10 tools, 57 offline tests.
+  Remaining: cloud masking (#1), SAR flood/water + stats, classic change detection (#4) — and
+  live-verifying everything built blind this session once creds/network exist.
 - Session started: 2026-06-06 (Session 5)
 
 ---
@@ -66,6 +66,14 @@ approval · respect API quotas/ToS · cap image size and always return stats wit
   (`validateIngest`, now exported). `pnpm test` / `pnpm typecheck:test`; **GitHub Actions CI**
   (`.github/workflows/ci.yml`) runs typecheck → test → build on push/PR. This is the answer to
   "how do we work offline" — verified progress no longer depends on live APIs.
+- **Also this session: Sentinel-1 SAR (Horizon 1 item 2 — the #1 weakness).** New `sar_render`
+  tool (all-weather radar; VV / VH / VV-VH-ratio false-color; GAMMA0 terrain-corrected). To get
+  there, generalized `CopernicusClient` to target any collection via a `DataSourceSpec`
+  (`buildInput` + `s2Source`) — the Sentinel-2 request body is unchanged (deep-equality test
+  guards it). Added `SAR_EVALSCRIPTS` and `sarProvenance` (no cloud mask — records all-weather
+  as the advantage). **10 tools, 57 tests.** ⚠️ Live S1 render + visualization-gain tuning
+  deferred (gains are a documented starting point); the request-body shape, evalscripts, and
+  provenance are offline-verified.
 - **This container has NO `.env`/creds and NO outbound network** (all hosts 403 via policy —
   even the open STAC endpoints), so ALL live API verification is deferred this session. The
   provenance + STAC-parser work is pure, fully offline-verifiable logic.
@@ -89,12 +97,14 @@ Horizon 1 — Trustworthy analyst (current):
 - [x] **Provenance block** on every numeric/imagery output (this session) — offline-verified.
 - [x] **Internal STAC layer** — `stac_search` (Earth Search, no key, COG URLs) (this session)
       — offline-verified (15 parser checks); ⚠️ live Earth Search call deferred (no network).
+- [x] **Sentinel-1 SAR** (item 2) — `sar_render` backscatter (VV/VH/false-color) via a
+      generalized multi-collection client (this session). ⚠️ live render + viz-gain tuning deferred.
 - [ ] **Better cloud masking** (item 1, highest leverage) — Cloud Score+ / s2cloudless /
       OmniCloudMask behind `eo_index`/`eo_render`/`eo_compare`. ⚠️ needs live CDSE to verify.
-- [ ] **Sentinel-1 SAR** (item 2) — GRD backscatter render + flood/water mapping. ⚠️ needs creds.
-- [ ] Classic change detection (#4) · consume GFW alerts (#5) · STAC-backed render path (see ROADMAP).
+- [ ] SAR flood/water mapping + a `sar_*` stat tool · classic change detection (#4) ·
+      consume GFW alerts (#5) · STAC-backed render path (see ROADMAP).
 
-9 tools total (added `stac_search`). Build + typecheck green. **53 offline tests green** (`pnpm test`).
+10 tools total (added `stac_search`, `sar_render`). Build + typecheck green. **57 offline tests green** (`pnpm test`).
 
 Engineering quality (cross-cutting):
 - [x] Offline `node:test` suite (53 tests, network mocked) + GitHub Actions CI. (this session)
@@ -108,6 +118,17 @@ returns Tropical Storm Amanda. Run the dashboard on a non-default port to avoid 
 ---
 
 ## SESSION LOG
+
+### 2026-06-06 — Session 5 (Sentinel-1 SAR — the all-weather answer)
+- Added `sar_render` (Sentinel-1 GRD backscatter: VV / VH / VV-VH-ratio false-color; GAMMA0
+  terrain-corrected, most-recent in a lookback window) — the start of closing our #1 weakness.
+- Generalized `CopernicusClient`: `DataSourceSpec` + `buildInput`/`s2Source` so Process can
+  target any collection; the **S2 request body is byte-unchanged** (deep-equality test guards
+  it). New `SAR_EVALSCRIPTS` (sqrt-stretch viz) + `sarProvenance` (all-weather → no cloud mask).
+- Verified offline: 57 tests green (SAR evalscripts, S1 vs S2 request-body shape, SAR
+  provenance), typecheck (src+test) + build green, MCP lists 10 tools, no-creds path returns a
+  clean error. ⚠️ Live S1 render + visualization-gain tuning deferred (no creds/network) —
+  gains documented as a starting point.
 
 ### 2026-06-06 — Session 5 (offline test suite + CI)
 - Built the thing that unblocks all future offline work: a `node:test` suite (zero new deps,

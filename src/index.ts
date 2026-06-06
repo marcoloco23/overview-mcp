@@ -5,6 +5,7 @@ import { registerImageryTools } from "./tools/imagery.js";
 import { registerEventsTools } from "./tools/events.js";
 import { registerFireTools } from "./tools/fires.js";
 import { registerAnalysisTools } from "./tools/analysis.js";
+import { registerSarTools } from "./tools/sar.js";
 import { registerStacTools } from "./tools/stac.js";
 import { registerGeoTools } from "./tools/geo.js";
 
@@ -16,9 +17,10 @@ export function buildServer(): McpServer {
         "Earth-observation tools over free, open data. Give yourself eyes on Earth: render " +
         "satellite imagery for a bounding box, list live natural-disaster events, search open " +
         "satellite archives for scenes + COG links (no key, via STAC), and (with keys) compute " +
-        "vegetation/water/burn indices, find active fires, and compare a place across two " +
-        "dates. Bounding boxes are [west, south, east, north] in degrees. Results also stream " +
-        "to a local dashboard if one is running (best-effort).",
+        "vegetation/water/burn indices, find active fires, render all-weather Sentinel-1 SAR " +
+        "(sees through cloud/smoke/night), and compare a place across two dates. Bounding boxes " +
+        "are [west, south, east, north] in degrees. Results also stream to a local dashboard if " +
+        "one is running (best-effort).",
     },
   );
 
@@ -26,6 +28,7 @@ export function buildServer(): McpServer {
   registerEventsTools(server);
   registerFireTools(server);
   registerAnalysisTools(server);
+  registerSarTools(server);
   registerStacTools(server);
   registerGeoTools(server);
 
