@@ -61,6 +61,7 @@ interface StatsOpts {
   evalscript: string;
   width?: number;
   height?: number;
+  source?: DataSourceSpec; // override the default Sentinel-2 source (e.g. Sentinel-1 GRD)
 }
 
 interface SearchOpts {
@@ -177,7 +178,7 @@ export class CopernicusClient {
     // overshoots `to` and gets dropped (→ empty result). floor(span) keeps it inside.
     const days = Math.max(1, Math.floor((Date.parse(to) - Date.parse(from)) / 86_400_000));
     const body = {
-      input: this.buildInput(bbox, opts.dateFrom, opts.dateTo, this.s2Source()),
+      input: this.buildInput(bbox, opts.dateFrom, opts.dateTo, opts.source ?? this.s2Source()),
       aggregation: {
         timeRange: { from, to },
         aggregationInterval: { of: `P${days}D` },

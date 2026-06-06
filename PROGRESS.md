@@ -5,6 +5,30 @@ status, next priorities. The live task pointer is in [CONTINUITY.md](CONTINUITY.
 
 ---
 
+## Session: 2026-06-06 (Horizon 1 — SAR water/flood extent) ✅
+
+**Focus**: `sar_water` — all-weather water/flood extent from Sentinel-1 (ROADMAP Horizon 1
+item 2 follow-up). Water and smooth surfaces reflect radar away from the sensor → low VV
+backscatter, so a threshold on VV γ⁰ is a robust water mask that works through cloud and night.
+
+**Done**:
+- [x] `sar_water(bbox, date?, windowDays?, thresholdDb?, orbitDirection?)` → water % of the
+      AOI + % valid + threshold + provenance + interpretation; pushes an index card.
+- [x] `sarWaterEvalscript(threshLinear)` — binary water band (VV < thresh ? 1 : 0), so the
+      Statistical-API **mean = water fraction**; thresholdDb (default −17) → linear via 10^(dB/10).
+- [x] Generalized `statistics()` to accept a `source?: DataSourceSpec` (mirrors the earlier
+      `process()` refactor); SAR water passes the `sentinel-1-grd` GAMMA0 spec.
+
+**Build/smoke**: 60 tests green (3 new — water evalscript threshold/bands; S1 statistics
+request-body shape + water-fraction from a mocked response; S2 statistics unchanged);
+typecheck (src + test) + build green; MCP lists 11 tools. **Live S1 stats + threshold tuning
+deferred** (no creds/network); −17 dB is a documented starting point.
+
+**Next**: SAR Δ-water (flood onset between two dates); cloud-masking upgrade (#1); live-verify
+the SAR tools once creds/network exist.
+
+---
+
 ## Session: 2026-06-06 (Horizon 1 — Sentinel-1 SAR) ✅
 
 **Focus**: Sentinel-1 C-band SAR backscatter rendering (`sar_render`) — all-weather imagery

@@ -22,6 +22,7 @@ dashboard lights up with what it's seeing.
 | `fires_in` | Active fire / thermal-anomaly detections (NASA FIRMS), near-real-time | `FIRMS_MAP_KEY` |
 | `eo_render` | High-res (10 m) Sentinel-2 imagery — trueColor / falseColor / NDVI ramp | CDSE |
 | `sar_render` | All-weather Sentinel-1 SAR backscatter (sees through cloud/smoke/night) — VV / VH / false-color | CDSE |
+| `sar_water` | All-weather water / flood extent from Sentinel-1 (water % of the AOI via low VV backscatter) | CDSE |
 | `eo_index` | NDVI / NDWI / NBR statistics over a least-cloudy Sentinel-2 composite | CDSE |
 | `eo_search` | Search the Sentinel-2 archive for scenes + cloud cover | CDSE |
 | `eo_compare` | Change detection: render two dates + the index delta (deforestation/flood/burn) | CDSE |

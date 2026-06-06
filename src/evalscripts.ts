@@ -53,6 +53,22 @@ function evaluatePixel(s){
 }`,
 };
 
+/**
+ * Statistical evalscript for SAR water/flood extent. Water (and other smooth surfaces)
+ * specularly reflect radar away from the sensor → very low VV backscatter, so VV γ⁰ below a
+ * threshold marks water. Outputs a binary band (1 = water), so the Statistical API's `mean`
+ * over the AOI is the **water-covered fraction**. `threshLinear` is the VV γ⁰ cutoff in linear
+ * power (convert from dB with 10^(dB/10)).
+ */
+export function sarWaterEvalscript(threshLinear: number): string {
+  return `//VERSION=3
+function setup(){return {input:[{bands:["VV","dataMask"]}],output:[{id:"data",bands:1,sampleType:"FLOAT32"},{id:"dataMask",bands:1}]}}
+function evaluatePixel(s){
+  var water=(s.VV<${threshLinear})?1:0;
+  return {data:[water],dataMask:[s.dataMask]};
+}`;
+}
+
 /** Normalized-difference index definitions for the Statistical API. */
 const INDEX_BANDS: Record<string, [string, string]> = {
   NDVI: ["B08", "B04"], // (NIR - Red)/(NIR + Red)

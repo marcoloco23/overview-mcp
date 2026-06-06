@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { INDEX_NAMES, maskedClassesFor, SAR_EVALSCRIPTS, SCL_CLEAR_MASK, statEvalscript } from "../src/evalscripts.js";
+import { INDEX_NAMES, maskedClassesFor, SAR_EVALSCRIPTS, sarWaterEvalscript, SCL_CLEAR_MASK, statEvalscript } from "../src/evalscripts.js";
 
 test("INDEX_NAMES are the three supported indices", () => {
   assert.deepEqual(INDEX_NAMES.sort(), ["NBR", "NDVI", "NDWI"]);
@@ -48,6 +48,15 @@ test("SAR_EVALSCRIPTS provide vv/vh/falseColor over Sentinel-1 VV/VH bands", () 
   assert.ok(SAR_EVALSCRIPTS.vv!.includes('"VV"') && !SAR_EVALSCRIPTS.vv!.includes('"VH"'));
   assert.ok(SAR_EVALSCRIPTS.vh!.includes('"VH"'));
   assert.ok(SAR_EVALSCRIPTS.falseColor!.includes('"VV"') && SAR_EVALSCRIPTS.falseColor!.includes('"VH"'));
+});
+
+test("sarWaterEvalscript embeds the linear threshold and outputs a binary FLOAT32 band", () => {
+  const script = sarWaterEvalscript(0.02);
+  assert.ok(script.includes("//VERSION=3"));
+  assert.ok(script.includes('"VV"') && script.includes('"dataMask"'), "reads VV + dataMask");
+  assert.ok(script.includes("FLOAT32"));
+  assert.ok(script.includes("s.VV<0.02"), "threshold inlined; water = VV below it");
+  assert.ok(/water=\(s\.VV<0\.02\)\?1:0/.test(script), "binary 0/1 → mean is the water fraction");
 });
 
 test("maskedClassesFor lists 6 classes for NDVI/NBR and 5 for NDWI", () => {

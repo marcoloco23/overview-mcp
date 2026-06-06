@@ -12,9 +12,9 @@ reference is [CLAUDE.md](CLAUDE.md); the phase plan is [ROADMAP.md](ROADMAP.md).
 - Current task understood: YES
 - Current task: **Horizon 1 well underway.** This session shipped: provenance block (item 3),
   internal STAC layer (item 6, `stac_search`), an **offline test suite + CI**, and **Sentinel-1
-  SAR** (`sar_render`, item 2 — structurally; the #1 weakness). 10 tools, 57 offline tests.
-  Remaining: cloud masking (#1), SAR flood/water + stats, classic change detection (#4) — and
-  live-verifying everything built blind this session once creds/network exist.
+  SAR** — `sar_render` + `sar_water` (item 2, the #1 weakness). **11 tools, 60 offline tests.**
+  Remaining: cloud masking (#1), classic change detection (#4), SAR Δ-water for flood onset —
+  and live-verifying everything built blind this session once creds/network exist.
 - Session started: 2026-06-06 (Session 5)
 
 ---
@@ -71,9 +71,11 @@ approval · respect API quotas/ToS · cap image size and always return stats wit
   there, generalized `CopernicusClient` to target any collection via a `DataSourceSpec`
   (`buildInput` + `s2Source`) — the Sentinel-2 request body is unchanged (deep-equality test
   guards it). Added `SAR_EVALSCRIPTS` and `sarProvenance` (no cloud mask — records all-weather
-  as the advantage). **10 tools, 57 tests.** ⚠️ Live S1 render + visualization-gain tuning
-  deferred (gains are a documented starting point); the request-body shape, evalscripts, and
-  provenance are offline-verified.
+  as the advantage). Added `sar_water` (all-weather water/flood extent: water % of the AOI from
+  low VV backscatter, via the now-generalized `statistics()` + a binary water evalscript whose
+  mean = water fraction; thresholdDb default −17). **11 tools, 60 tests.** ⚠️ Live S1
+  render/stats + threshold/visualization-gain tuning deferred (documented starting points); the
+  request-body shapes, evalscripts, water-fraction logic, and provenance are offline-verified.
 - **This container has NO `.env`/creds and NO outbound network** (all hosts 403 via policy —
   even the open STAC endpoints), so ALL live API verification is deferred this session. The
   provenance + STAC-parser work is pure, fully offline-verifiable logic.
@@ -97,14 +99,15 @@ Horizon 1 — Trustworthy analyst (current):
 - [x] **Provenance block** on every numeric/imagery output (this session) — offline-verified.
 - [x] **Internal STAC layer** — `stac_search` (Earth Search, no key, COG URLs) (this session)
       — offline-verified (15 parser checks); ⚠️ live Earth Search call deferred (no network).
-- [x] **Sentinel-1 SAR** (item 2) — `sar_render` backscatter (VV/VH/false-color) via a
-      generalized multi-collection client (this session). ⚠️ live render + viz-gain tuning deferred.
+- [x] **Sentinel-1 SAR** (item 2) — `sar_render` backscatter (VV/VH/false-color) + `sar_water`
+      (water/flood extent) via a generalized multi-collection client (this session).
+      ⚠️ live render/stats + threshold/viz-gain tuning deferred.
 - [ ] **Better cloud masking** (item 1, highest leverage) — Cloud Score+ / s2cloudless /
       OmniCloudMask behind `eo_index`/`eo_render`/`eo_compare`. ⚠️ needs live CDSE to verify.
-- [ ] SAR flood/water mapping + a `sar_*` stat tool · classic change detection (#4) ·
+- [ ] SAR Δ-water (flood onset between two dates) · classic change detection (#4) ·
       consume GFW alerts (#5) · STAC-backed render path (see ROADMAP).
 
-10 tools total (added `stac_search`, `sar_render`). Build + typecheck green. **57 offline tests green** (`pnpm test`).
+11 tools total (added `stac_search`, `sar_render`, `sar_water`). Build + typecheck green. **60 offline tests green** (`pnpm test`).
 
 Engineering quality (cross-cutting):
 - [x] Offline `node:test` suite (53 tests, network mocked) + GitHub Actions CI. (this session)
@@ -118,6 +121,15 @@ returns Tropical Storm Amanda. Run the dashboard on a non-default port to avoid 
 ---
 
 ## SESSION LOG
+
+### 2026-06-06 — Session 5 (SAR water/flood extent)
+- Added `sar_water` — quantifies the water-covered fraction of an AOI from Sentinel-1 VV
+  backscatter (water/smooth = low γ⁰), all-weather flood/water signal. Generalized
+  `statistics()` to accept a `source` (mirrors the `process()` refactor); a binary water
+  evalscript whose Statistical-API mean = water fraction; thresholdDb (default −17) → linear.
+- Verified offline: 60 tests green (water evalscript threshold/bands; S1 statistics body shape
+  + water-fraction from a mocked response; S2 statistics unchanged); typecheck (src+test) +
+  build green; MCP lists 11 tools. ⚠️ Live S1 stats + threshold tuning deferred.
 
 ### 2026-06-06 — Session 5 (Sentinel-1 SAR — the all-weather answer)
 - Added `sar_render` (Sentinel-1 GRD backscatter: VV / VH / VV-VH-ratio false-color; GAMMA0

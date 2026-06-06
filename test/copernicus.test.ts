@@ -146,6 +146,46 @@ test("process targets Sentinel-1 GRD when given a SAR source spec", async (t) =>
   assert.ok(entry.dataFilter.timeRange.from.startsWith("2025-05-17"));
 });
 
+test("statistics targets Sentinel-1 GRD when given a SAR source; mean is the water fraction", async (t) => {
+  const fetchMock = mockFetch((url) =>
+    isToken(url) ? jsonResponse({ access_token: "TKN", expires_in: 3600 }) : jsonResponse(statsBody({ mean: 0.234, sampleCount: 100, noDataCount: 5 })),
+  );
+  t.after(() => fetchMock.restore());
+
+  const client = new CopernicusClient("id", "secret");
+  const stats = await client.statistics(BBOX, {
+    dateFrom: "2025-05-17",
+    dateTo: "2025-05-31",
+    evalscript: "x",
+    source: {
+      collection: "sentinel-1-grd",
+      mosaickingOrder: "mostRecent",
+      dataFilter: { acquisitionMode: "IW", polarization: "DV", resolution: "HIGH" },
+      processing: { orthorectify: true, backCoeff: "GAMMA0_TERRAIN" },
+    },
+  });
+
+  const body = JSON.parse(fetchMock.calls.find((c) => c.url.includes("/statistics"))!.body!);
+  const entry = body.input.data[0];
+  assert.equal(entry.type, "sentinel-1-grd");
+  assert.equal(entry.dataFilter.mosaickingOrder, "mostRecent");
+  assert.deepEqual(entry.processing, { orthorectify: true, backCoeff: "GAMMA0_TERRAIN" });
+  // mean of the binary water band → water fraction; validPct = data coverage.
+  assert.equal(stats.mean, 0.234);
+  assert.equal(stats.validPct, 95);
+});
+
+test("statistics still targets Sentinel-2 L2A (leastCC) with no source", async (t) => {
+  const fetchMock = mockFetch((url) => (isToken(url) ? jsonResponse({ access_token: "TKN", expires_in: 3600 }) : jsonResponse(statsBody())));
+  t.after(() => fetchMock.restore());
+  const client = new CopernicusClient("id", "secret");
+  await client.statistics(BBOX, { dateFrom: "2025-05-01", dateTo: "2025-05-31", evalscript: "x" });
+  const entry = JSON.parse(fetchMock.calls.find((c) => c.url.includes("/statistics"))!.body!).input.data[0];
+  assert.equal(entry.type, "sentinel-2-l2a");
+  assert.equal(entry.dataFilter.mosaickingOrder, "leastCC");
+  assert.equal(entry.processing, undefined);
+});
+
 test("search parses scenes, filters by maxCloud, and uses Accept: */*", async (t) => {
   const features = {
     features: [
