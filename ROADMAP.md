@@ -29,6 +29,7 @@ Env: `CDSE_CLIENT_ID`/`CDSE_CLIENT_SECRET` (Copernicus), `FIRMS_MAP_KEY` (fires)
 | `events(category?, status="open", bbox?, days=30)` | NASA EONET v3 | none | events |
 | `eo_compare(bbox, dateA, dateB, index="NDVI")` | render×2 + index delta | OAuth | compare |
 | `geo_resolve(place)` *(optional)* | OSM Nominatim | none | — |
+| `stac_search(bbox, dateFrom, dateTo, collection="sentinel-2-l2a", maxCloud?, limit=8)` | Earth Search STAC | none | search |
 
 Endpoints:
 - OAuth token: `POST https://identity.dataspace.copernicus.eu/auth/realms/CDSE/protocol/openid-connect/token` (`client_credentials`)
@@ -38,6 +39,7 @@ Endpoints:
 - Worldview snapshot: `GET https://wvs.earthdata.nasa.gov/api/v1/snapshot?REQUEST=GetSnapshot&TIME=&BBOX=&CRS=EPSG:4326&LAYERS=&FORMAT=image/jpeg&WIDTH=&HEIGHT=`
 - FIRMS area: `GET https://firms.modaps.eosdis.nasa.gov/api/area/csv/{MAP_KEY}/{SOURCE}/{west,south,east,north}/{dayRange}/{date}`
 - EONET: `GET https://eonet.gsfc.nasa.gov/api/v3/events?status=open&bbox=&days=`
+- STAC: `POST https://earth-search.aws.element84.com/v1/search` (open, no key; `OVERVIEW_STAC_URL` overrides)
 
 ---
 
@@ -120,7 +122,11 @@ All free / low-or-no GPU. Highest-leverage first:
       `eo_compare` output + dashboard cards. Offline-verified (27 checks); live CDSE deferred.
 - [ ] **Classic change detection** as tools: temporal median compositing, CCDC/BFAST/LandTrendr.
 - [ ] **Consume GFW alerts** (GLAD-L/GLAD-S2/RADD/DIST-ALERT) instead of rebuilding deforestation.
-- [ ] **Internal STAC + COG layer** (Earth Search + Planetary Computer); GEE as research backend.
+- [~] **Internal STAC + COG layer** — `stac_search` against the open, no-auth Earth Search
+      (Element 84) STAC (endpoint configurable via `OVERVIEW_STAC_URL` → Planetary Computer /
+      self-hosted). Zero-key scene search returning COG asset URLs; provider-independent
+      companion to `eo_render` reads still TODO. Offline-verified (15 parser checks + graceful
+      error path); live Earth Search call deferred (no outbound network this session).
 
 ## Horizon 2 — The planet becomes searchable (≈ months 6–12)
 

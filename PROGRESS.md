@@ -5,6 +5,40 @@ status, next priorities. The live task pointer is in [CONTINUITY.md](CONTINUITY.
 
 ---
 
+## Session: 2026-06-06 (Horizon 1 — internal STAC layer) ✅
+
+**Focus**: Second Horizon 1 step — a provider-independent **STAC search** against the open,
+no-auth **Earth Search (Element 84)** API (VISION §7/§8 "Internal STAC + COG layer … so we're
+not bound to one provider's API"; ROADMAP Horizon 1 item 6).
+
+**Why this item**: this container has no creds **and** no outbound network (every host 403s
+via the policy), so nothing external can be live-verified. The STAC layer is the most
+offline-verifiable foundational item — its core is a pure parser (fixture-testable, like
+`parseFiresCsv`) — and it delivers two things v0.1 lacked: a **zero-key** scene search
+(`eo_search` needs CDSE OAuth) and **COG asset URLs** (the substrate Horizon 2 reads).
+
+**Done**:
+- [x] `src/clients/stac.ts` — `StacScene`/`StacAsset` types; pure `parseStacFeatures(json,
+      maxCloud)` (normalize id/datetime/cloud, 6→4 bbox, split data-COG vs thumbnail assets,
+      sort least-cloudy, defensive skips) + thin `stacSearch()` fetch wrapper (POST /search,
+      `query` cloud filter, clean errors).
+- [x] `src/tools/stac.ts` — `stac_search` tool (no key) → result with source/endpoint/COG
+      assets + a `search` dashboard card. Registered in `index.ts` (9 tools); server
+      instructions updated.
+- [x] `config.stacUrl()` (`OVERVIEW_STAC_URL` ?? Earth Search) so Planetary Computer / a
+      self-hosted STAC drop in. README tool table + `.env.example` updated.
+
+**Build/smoke**: `tsc` + `vite build` green; **15 parser fixture checks pass** (3D-bbox
+normalize, asset split, least-cloudy sort, `maxCloud` filter, malformed-feature skip,
+empty → []); MCP lists `stac_search`; a live call returns a cleanly wrapped error
+(`STAC search failed (403) — Host not in allowlist`), confirming the fetch wiring + graceful
+failure. **Live Earth Search response parsing deferred** (no network this session).
+
+**Next**: cloud-masking upgrade (#1) + Sentinel-1 SAR (#2) — need live CDSE creds; and
+live-verify `stac_search` against Earth Search once a session has network.
+
+---
+
 ## Session: 2026-06-06 (Horizon 1 — provenance block) ✅
 
 **Focus**: First Horizon 1 step — make every Copernicus output decision-support by attaching

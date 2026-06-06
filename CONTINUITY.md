@@ -10,9 +10,10 @@ reference is [CLAUDE.md](CLAUDE.md); the phase plan is [ROADMAP.md](ROADMAP.md).
 
 - Agent read full file: YES
 - Current task understood: YES
-- Current task: **Horizon 1 in progress.** Provenance block shipped (item 3). Next:
-  cloud-masking upgrade (item 1) + Sentinel-1 SAR (item 2) — both need live CDSE creds to
-  verify, which this container lacks. Strategy in [VISION.md](VISION.md).
+- Current task: **Horizon 1 in progress.** Provenance block (item 3) + internal STAC layer
+  (item 6, `stac_search`) shipped this session. Remaining items (cloud masking #1, SAR #2,
+  classic change detection #4) all need live CDSE creds + outbound network — neither of which
+  this container has. Strategy in [VISION.md](VISION.md).
 - Session started: 2026-06-06 (Session 5)
 
 ---
@@ -48,12 +49,21 @@ approval · respect API quotas/ToS · cap image size and always return stats wit
   `evalscripts.ts` (`SCL_CLEAR_MASK` + `maskedClassesFor`) so the reported mask can't drift
   from the applied mask. Build + typecheck green; 27 offline checks pass (incl. byte-identical
   mask refactor); MCP lists all 8 tools.
-- **This container has NO `.env`/creds and no network to CDSE**, so live API verification of
-  imagery/stats is deferred. The provenance work is pure, fully offline-verifiable logic.
-- Next (need live CDSE creds to verify): **cloud-masking upgrade** (Cloud Score+ /
-  s2cloudless / OmniCloudMask, Horizon 1 item 1 — highest leverage) and **Sentinel-1 SAR**
-  (item 2). The shared mask constant + provenance `cloudMask.method` field are already set up
-  to make the masking upgrade a localized change.
+- **Also this session: internal STAC layer (Horizon 1 item 6).** New `stac_search` tool
+  (`src/tools/stac.ts`, `src/clients/stac.ts`) hits the open, **no-auth Earth Search (Element
+  84)** STAC API — a **zero-key** scene search (today's `eo_search` needs CDSE OAuth) that
+  also returns **COG asset URLs** (the Horizon 2 substrate). Endpoint configurable via
+  `OVERVIEW_STAC_URL` (→ Planetary Computer / self-hosted). Now **9 tools**. The parser
+  `parseStacFeatures()` is pure + fixture-tested (15 checks); the no-network error path is
+  graceful (`isError`, clean message).
+- **This container has NO `.env`/creds and NO outbound network** (all hosts 403 via policy —
+  even the open STAC endpoints), so ALL live API verification is deferred this session. The
+  provenance + STAC-parser work is pure, fully offline-verifiable logic.
+- Next (need live CDSE creds AND/OR network to verify): **cloud-masking upgrade** (Cloud
+  Score+ / s2cloudless / OmniCloudMask, item 1 — highest leverage) and **Sentinel-1 SAR**
+  (item 2). The shared mask constant + provenance `cloudMask.method` field are set up to make
+  the masking upgrade a localized change. Also pending: **live-verify `stac_search`** against
+  Earth Search the moment a session has network.
 
 ## TASK QUEUE
 
@@ -67,12 +77,14 @@ Phases 0–5 (Horizon 0): ✅ done + shipped public. 8 tools, all live-verified.
 
 Horizon 1 — Trustworthy analyst (current):
 - [x] **Provenance block** on every numeric/imagery output (this session) — offline-verified.
+- [x] **Internal STAC layer** — `stac_search` (Earth Search, no key, COG URLs) (this session)
+      — offline-verified (15 parser checks); ⚠️ live Earth Search call deferred (no network).
 - [ ] **Better cloud masking** (item 1, highest leverage) — Cloud Score+ / s2cloudless /
       OmniCloudMask behind `eo_index`/`eo_render`/`eo_compare`. ⚠️ needs live CDSE to verify.
 - [ ] **Sentinel-1 SAR** (item 2) — GRD backscatter render + flood/water mapping. ⚠️ needs creds.
-- [ ] Classic change detection · consume GFW alerts · internal STAC+COG layer (see ROADMAP).
+- [ ] Classic change detection (#4) · consume GFW alerts (#5) · STAC-backed render path (see ROADMAP).
 
-8 tools total. Build + typecheck green.
+9 tools total (added `stac_search`). Build + typecheck green.
 
 Useful test fixtures: Amazon near Manaus bbox `[-60.2,-3.3,-59.8,-2.9]`; events smoke
 returns Tropical Storm Amanda. Run the dashboard on a non-default port to avoid clashes:
@@ -82,6 +94,20 @@ returns Tropical Storm Amanda. Run the dashboard on a non-default port to avoid 
 ---
 
 ## SESSION LOG
+
+### 2026-06-06 — Session 5 (Horizon 1: internal STAC layer)
+- Second Horizon 1 step (item 6). With no creds AND no outbound network (all hosts 403),
+  chose the most offline-verifiable foundational item: a provider-independent STAC search.
+- New `src/clients/stac.ts` (pure `parseStacFeatures()` + thin `stacSearch()` fetch wrapper),
+  `src/tools/stac.ts` (`stac_search`, no key), `config.stacUrl()` (`OVERVIEW_STAC_URL` ??
+  Earth Search). Returns scene ids/dates/cloud + **COG asset URLs**; endpoint swappable to
+  Planetary Computer / self-hosted. Registered in `index.ts` (9 tools); README + `.env.example`
+  updated.
+- Verified offline: `tsc` + `vite build` green; **15 parser fixture checks** (6→4 bbox
+  normalize, data-vs-thumbnail asset split, least-cloudy sort, `maxCloud` filter, malformed
+  feature skipped, missing-features → []); MCP lists `stac_search`; live call returns a clean
+  wrapped error (`403 Host not in allowlist`) — confirms fetch wiring + graceful failure.
+  Live Earth Search response parsing deferred to a session with network.
 
 ### 2026-06-06 — Session 5 (Horizon 1: provenance block)
 - First Horizon 1 step. Chose the **provenance block** (item 3) because it's the
