@@ -23,6 +23,52 @@ function sarSource(orbitDirection?: string): DataSourceSpec {
   };
 }
 
+export interface FloodSummary {
+  waterPctBefore: number;
+  waterPctAfter: number;
+  floodDeltaPct: number; // after − before, in percentage points of the AOI
+  validPctBefore: number;
+  validPctAfter: number;
+  thresholdDb: number;
+  lowQuality: boolean;
+  interpretation: string;
+}
+
+/**
+ * Pure summary of a two-date SAR water comparison (flood onset). Positive Δ over a short
+ * window suggests new water (flooding); negative means water receded. Kept pure so it can be
+ * unit-tested without the network.
+ */
+export function floodResult(p: {
+  beforePct: number;
+  afterPct: number;
+  validBefore: number;
+  validAfter: number;
+  thresholdDb: number;
+  dateBefore: string;
+  dateAfter: string;
+}): FloodSummary {
+  const floodDeltaPct = Math.round((p.afterPct - p.beforePct) * 10) / 10;
+  const lowQuality = Math.min(p.validBefore, p.validAfter) < 60;
+  const dir = floodDeltaPct > 0 ? "increased" : floodDeltaPct < 0 ? "receded" : "was unchanged";
+  const interpretation =
+    `Water extent ${dir} by ${Math.abs(floodDeltaPct)} pts of the AOI ` +
+    `(${p.beforePct}% → ${p.afterPct}%) from ${p.dateBefore} to ${p.dateAfter}, ` +
+    `VV γ⁰ < ${p.thresholdDb} dB (valid pixels ${p.validBefore}% / ${p.validAfter}%).` +
+    (floodDeltaPct > 0 ? ` Positive Δ over a short window suggests flooding.` : ``) +
+    (lowQuality ? ` ⚠️ Low valid coverage on at least one date — treat with caution.` : ``);
+  return {
+    waterPctBefore: p.beforePct,
+    waterPctAfter: p.afterPct,
+    floodDeltaPct,
+    validPctBefore: p.validBefore,
+    validPctAfter: p.validAfter,
+    thresholdDb: p.thresholdDb,
+    lowQuality,
+    interpretation,
+  };
+}
+
 const bboxSchema = z
   .tuple([z.number(), z.number(), z.number(), z.number()])
   .describe("Bounding box [west, south, east, north] in degrees (EPSG:4326)");
@@ -157,6 +203,81 @@ export function registerSarTools(server: McpServer): void {
             `(VV γ⁰ < ${db} dB) on the most-recent Sentinel-1 pass in ${dateFrom}…${dateTo} ` +
             `(${stats.validPct}% valid pixels).` +
             (lowQuality ? ` ⚠️ Low valid coverage — treat with caution.` : ``),
+          dashboard: pushed ? "pushed" : "dashboard offline",
+        };
+      }),
+  );
+
+  // ---- sar_flood: water-extent change between two dates (flood onset) -----------------
+  server.registerTool(
+    "sar_flood",
+    {
+      title: "SAR flood onset (Sentinel-1, two dates)",
+      description:
+        "Compare Sentinel-1 water extent at two dates to find newly-flooded area: water % " +
+        "before vs after, and the change (positive Δ over a short window = flooding). " +
+        "All-weather, so it works for storm/monsoon events that optical can't see through. " +
+        "Use a pre-event baseline as dateBefore and a post-event date as dateAfter; compare " +
+        "like orbit directions. Requires CDSE creds.",
+      inputSchema: {
+        bbox: bboxSchema,
+        dateBefore: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).describe("Pre-event (baseline) date YYYY-MM-DD."),
+        dateAfter: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).describe("Post-event date YYYY-MM-DD."),
+        windowDays: z.number().int().min(1).max(60).optional().describe("Lookback per date for the most-recent scene (default 12)."),
+        thresholdDb: z.number().min(-30).max(0).optional().describe("VV γ⁰ cutoff in dB below which a pixel is water (default -17)."),
+        orbitDirection: z.enum(["ASCENDING", "DESCENDING"]).optional().describe("Restrict to one orbit direction (compare like with like)."),
+      },
+    },
+    async ({ bbox, dateBefore, dateAfter, windowDays, thresholdDb, orbitDirection }) =>
+      safe(async () => {
+        const client = getCopernicus();
+        const box = bbox as BBox;
+        const win = windowDays ?? 12;
+        const db = thresholdDb ?? -17;
+        const evalscript = sarWaterEvalscript(Math.pow(10, db / 10));
+        const source = sarSource(orbitDirection);
+
+        const one = async (date: string) => {
+          const from = addDays(date, -win);
+          const stats = await client.statistics(box, { dateFrom: from, dateTo: date, evalscript, source });
+          return { date, from, pct: Math.round(stats.mean * 1000) / 10, stats };
+        };
+        const [b, a] = await Promise.all([one(dateBefore), one(dateAfter)]);
+
+        const summary = floodResult({
+          beforePct: b.pct,
+          afterPct: a.pct,
+          validBefore: b.stats.validPct,
+          validAfter: a.stats.validPct,
+          thresholdDb: db,
+          dateBefore,
+          dateAfter,
+        });
+        const provenanceBefore = sarProvenance({ bbox: box, from: b.from, to: dateBefore, polarization: "DV", orbitDirection });
+        const provenanceAfter = sarProvenance({ bbox: box, from: a.from, to: dateAfter, polarization: "DV", orbitDirection });
+
+        const sign = summary.floodDeltaPct >= 0 ? "+" : "";
+        const pushed = await pushCard({
+          id: newId(),
+          type: "index",
+          ts: nowIso(),
+          title: `SAR flood ${sign}${summary.floodDeltaPct}% · ${dateBefore}→${dateAfter}`,
+          bbox: box,
+          payload: {
+            index: "WATER Δ",
+            stats: a.stats,
+            window: { before: { from: b.from, to: dateBefore }, after: { from: a.from, to: dateAfter } },
+            provenanceA: provenanceBefore,
+            provenanceB: provenanceAfter,
+            dateA: dateBefore,
+            dateB: dateAfter,
+          },
+        });
+        return {
+          ...summary,
+          window: { before: { from: b.from, to: dateBefore }, after: { from: a.from, to: dateAfter } },
+          provenanceBefore,
+          provenanceAfter,
           dashboard: pushed ? "pushed" : "dashboard offline",
         };
       }),

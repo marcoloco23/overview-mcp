@@ -26,6 +26,7 @@ Env: `CDSE_CLIENT_ID`/`CDSE_CLIENT_SECRET` (Copernicus), `FIRMS_MAP_KEY` (fires)
 | `eo_render(bbox, date, view="trueColor"\|"falseColor"\|"ndvi", width=1024)` | Copernicus Process + evalscript | OAuth | imagery |
 | `sar_render(bbox, date, view="falseColor"\|"vv"\|"vh", windowDays=14, orbitDirection?)` | Copernicus Process (Sentinel-1 GRD) | OAuth | imagery |
 | `sar_water(bbox, date, windowDays=14, thresholdDb=-17, orbitDirection?)` | Copernicus Statistics (Sentinel-1 GRD) | OAuth | index |
+| `sar_flood(bbox, dateBefore, dateAfter, windowDays=12, thresholdDb=-17, orbitDirection?)` | Copernicus Statistics ×2 (Sentinel-1 GRD) | OAuth | index |
 | `eo_index(bbox, date, index="NDVI"\|"NDWI"\|"NBR")` | Copernicus Statistical | OAuth | index |
 | `fires_in(bbox, dayRange=1, source="VIIRS_SNPP_NRT")` | NASA FIRMS area | map key | fires |
 | `events(category?, status="open", bbox?, days=30)` | NASA EONET v3 | none | events |
@@ -116,11 +117,11 @@ All free / low-or-no GPU. Highest-leverage first:
 - [ ] **Better cloud masking** — Cloud Score+ / s2cloudless / OmniCloudMask behind
       `eo_index`/`eo_render`/`eo_compare` (big reliability jump over SCL; keep %-valid flag).
 - [~] **Sentinel-1 SAR** — `sar_render` (GRD backscatter, GAMMA0 terrain-corrected; VV/VH/
-      false-color) + `sar_water` (all-weather water/flood extent: water % from low VV backscatter),
+      false-color), `sar_water` (water/flood extent: water % from low VV backscatter), and
+      `sar_flood` (flood onset: Δ water % between a pre-event baseline and a post-event date),
       via a generalized multi-collection Copernicus client (Process + Statistics). Offline-verified
-      (evalscripts + S1/S2 request-body shape + water-fraction + provenance, 60 tests); ⚠️ live
-      render/stats + threshold/viz-gain tuning deferred (no creds/network). TODO: SAR change (Δ
-      water between two dates) for flood onset.
+      (evalscripts + S1/S2 request-body shape + water-fraction + flood-delta + provenance, 65
+      tests); ⚠️ live render/stats + threshold/viz-gain tuning deferred (no creds/network).
 - [x] **Provenance block** on every numeric/imagery output (data source, sensor/collection,
       composite window + mosaicking, cloud-mask method + masked SCL classes, % valid,
       best-effort contributing scene IDs, bbox, retrieved-at, decision-support disclaimer).

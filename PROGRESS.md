@@ -5,6 +5,29 @@ status, next priorities. The live task pointer is in [CONTINUITY.md](CONTINUITY.
 
 ---
 
+## Session: 2026-06-06 (Horizon 1 — SAR flood onset) ✅
+
+**Focus**: `sar_flood` — water-extent change between two dates (flood onset). Composes the
+`sar_water` measurement across a pre-event baseline and a post-event date; positive Δ over a
+short window indicates new water. All-weather, so it works for storm/monsoon flooding optical
+can't see through.
+
+**Done**:
+- [x] `sar_flood(bbox, dateBefore, dateAfter, windowDays?, thresholdDb?, orbitDirection?)` →
+      water % before/after, the Δ (pts of the AOI), per-date validity + provenance, and an
+      interpretation; pushes an index card.
+- [x] Extracted a **pure `floodResult()`** helper (delta + rounding + low-quality flag +
+      interpretation) so the new logic is unit-testable without the network.
+
+**Build/smoke**: 65 tests green (5 new in `test/sar.test.ts`: flood / recede / unchanged /
+one-decimal rounding / low-coverage flag); typecheck (src + test) + build green; MCP lists 12
+tools. Live S1 stats deferred (no creds/network).
+
+**Next**: cloud-masking upgrade (#1) or classic temporal-median compositing (#4); live-verify
+the SAR tools once creds/network exist.
+
+---
+
 ## Session: 2026-06-06 (Horizon 1 — SAR water/flood extent) ✅
 
 **Focus**: `sar_water` — all-weather water/flood extent from Sentinel-1 (ROADMAP Horizon 1

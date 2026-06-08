@@ -11,10 +11,10 @@ reference is [CLAUDE.md](CLAUDE.md); the phase plan is [ROADMAP.md](ROADMAP.md).
 - Agent read full file: YES
 - Current task understood: YES
 - Current task: **Horizon 1 well underway.** This session shipped: provenance block (item 3),
-  internal STAC layer (item 6, `stac_search`), an **offline test suite + CI**, and **Sentinel-1
-  SAR** — `sar_render` + `sar_water` (item 2, the #1 weakness). **11 tools, 60 offline tests.**
-  Remaining: cloud masking (#1), classic change detection (#4), SAR Δ-water for flood onset —
-  and live-verifying everything built blind this session once creds/network exist.
+  internal STAC layer (item 6, `stac_search`), an **offline test suite + CI**, and the full
+  **Sentinel-1 SAR** set — `sar_render` + `sar_water` + `sar_flood` (item 2, the #1 weakness).
+  **12 tools, 65 offline tests.** Remaining: cloud masking (#1), classic change detection (#4),
+  GFW alerts (#5) — and live-verifying everything built blind this session once creds/network exist.
 - Session started: 2026-06-06 (Session 5)
 
 ---
@@ -73,9 +73,11 @@ approval · respect API quotas/ToS · cap image size and always return stats wit
   guards it). Added `SAR_EVALSCRIPTS` and `sarProvenance` (no cloud mask — records all-weather
   as the advantage). Added `sar_water` (all-weather water/flood extent: water % of the AOI from
   low VV backscatter, via the now-generalized `statistics()` + a binary water evalscript whose
-  mean = water fraction; thresholdDb default −17). **11 tools, 60 tests.** ⚠️ Live S1
-  render/stats + threshold/visualization-gain tuning deferred (documented starting points); the
-  request-body shapes, evalscripts, water-fraction logic, and provenance are offline-verified.
+  mean = water fraction; thresholdDb default −17) and `sar_flood` (flood onset: Δ water %
+  between a pre-event baseline and a post-event date, with a pure unit-tested `floodResult`
+  helper). **12 tools, 65 tests.** ⚠️ Live S1 render/stats + threshold/visualization-gain tuning
+  deferred (documented starting points); the request-body shapes, evalscripts, water-fraction +
+  flood-delta logic, and provenance are offline-verified.
 - **This container has NO `.env`/creds and NO outbound network** (all hosts 403 via policy —
   even the open STAC endpoints), so ALL live API verification is deferred this session. The
   provenance + STAC-parser work is pure, fully offline-verifiable logic.
@@ -100,14 +102,14 @@ Horizon 1 — Trustworthy analyst (current):
 - [x] **Internal STAC layer** — `stac_search` (Earth Search, no key, COG URLs) (this session)
       — offline-verified (15 parser checks); ⚠️ live Earth Search call deferred (no network).
 - [x] **Sentinel-1 SAR** (item 2) — `sar_render` backscatter (VV/VH/false-color) + `sar_water`
-      (water/flood extent) via a generalized multi-collection client (this session).
-      ⚠️ live render/stats + threshold/viz-gain tuning deferred.
+      (water/flood extent) + `sar_flood` (flood onset, Δ water between two dates), via a
+      generalized multi-collection client (this session). ⚠️ live render/stats + threshold/viz-gain tuning deferred.
 - [ ] **Better cloud masking** (item 1, highest leverage) — Cloud Score+ / s2cloudless /
       OmniCloudMask behind `eo_index`/`eo_render`/`eo_compare`. ⚠️ needs live CDSE to verify.
-- [ ] SAR Δ-water (flood onset between two dates) · classic change detection (#4) ·
-      consume GFW alerts (#5) · STAC-backed render path (see ROADMAP).
+- [ ] Classic change detection (#4, temporal-median compositing) · consume GFW alerts (#5) ·
+      STAC-backed render path (see ROADMAP).
 
-11 tools total (added `stac_search`, `sar_render`, `sar_water`). Build + typecheck green. **60 offline tests green** (`pnpm test`).
+12 tools total (added `stac_search`, `sar_render`, `sar_water`, `sar_flood`). Build + typecheck green. **65 offline tests green** (`pnpm test`).
 
 Engineering quality (cross-cutting):
 - [x] Offline `node:test` suite (53 tests, network mocked) + GitHub Actions CI. (this session)
@@ -121,6 +123,15 @@ returns Tropical Storm Amanda. Run the dashboard on a non-default port to avoid 
 ---
 
 ## SESSION LOG
+
+### 2026-06-06 — Session 5 (SAR flood onset)
+- Added `sar_flood(bbox, dateBefore, dateAfter, …)` — composes the water measurement across two
+  dates (pre-event baseline vs post-event) and reports the Δ water %: positive over a short
+  window = flooding. All-weather, so it works for storms/monsoons optical can't see through.
+- Extracted a pure `floodResult()` helper (delta, low-quality flag, interpretation) and
+  unit-tested it directly (`test/sar.test.ts`) — flood/recede/unchanged/rounding/low-coverage.
+- Verified offline: 65 tests green; typecheck (src+test) + build green; MCP lists 12 tools.
+  ⚠️ Live S1 stats deferred.
 
 ### 2026-06-06 — Session 5 (SAR water/flood extent)
 - Added `sar_water` — quantifies the water-covered fraction of an AOI from Sentinel-1 VV
