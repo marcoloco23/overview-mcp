@@ -63,8 +63,8 @@ export async function runDemo(): Promise<void> {
   out("");
   out("  That's the planet right now — charts, quakes, and vital signs on the map.");
   out("  Next steps:");
-  out("    • Use it from Claude:  claude mcp add overview -- npx -y github:marcoloco23/overview-mcp");
-  out("    • Check your setup:    npx -y github:marcoloco23/overview-mcp doctor");
+  out("    • Use it from Claude:  claude mcp add overview -- npx -y overview-mcp");
+  out("    • Check your setup:    npx -y overview-mcp doctor");
   out("    • Free keys for satellite imagery + fires: see README → 'Free keys'");
   out("");
   out("  Ctrl+C to stop.");

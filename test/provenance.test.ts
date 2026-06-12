@@ -16,8 +16,9 @@ test("stats-kind provenance lists masked classes, validPct, and a decision-suppo
     scenes: [{ id: "S2_X", datetime: "2025-05-12T10:00:00Z", cloudCover: 4.2 }],
   });
   assert.equal(p.cloudMask.validPct, 91);
-  assert.equal(p.cloudMask.excludedClasses.length, 6);
+  assert.equal(p.cloudMask.excludedClasses.length, 7); // 6 SCL classes + the s2cloudless entry
   assert.match(p.cloudMask.method, /SCL/);
+  assert.match(p.cloudMask.method, /s2cloudless/);
   assert.equal(p.composite.mosaicking, "leastCC");
   assert.equal(p.scenes?.length, 1);
   assert.match(p.disclaimer, /^Decision-support/);
@@ -26,9 +27,10 @@ test("stats-kind provenance lists masked classes, validPct, and a decision-suppo
   assert.match(p.retrievedAt, /^\d{4}-\d{2}-\d{2}T/);
 });
 
-test("NDWI stats provenance excludes only 5 classes (keeps water)", () => {
+test("NDWI stats provenance keeps water: one fewer excluded class than NDVI", () => {
   const p = s2Provenance({ bbox: BBOX, from: "2025-05-01", to: "2025-05-31", kind: "stats", index: "NDWI", validPct: 80 });
-  assert.equal(p.cloudMask.excludedClasses.length, 5);
+  assert.equal(p.cloudMask.excludedClasses.length, 6); // 5 SCL classes + s2cloudless, no water
+  assert.ok(!p.cloudMask.excludedClasses.some((l) => l.includes("open water")));
 });
 
 test("image-kind provenance is an unmasked mosaic: no validPct, no excluded classes", () => {

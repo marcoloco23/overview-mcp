@@ -1,11 +1,11 @@
 // Centralized environment configuration.
 
 export const SERVER_NAME = "overview-mcp";
-export const SERVER_VERSION = "0.1.0";
+export const SERVER_VERSION = "0.2.0";
 
 /** Descriptive User-Agent — required/encouraged by NASA and Nominatim. */
 export const USER_AGENT =
-  "overview-mcp/0.1.0 (+https://github.com/marcoloco23/overview-mcp)";
+  "overview-mcp/0.2.0 (+https://github.com/marcoloco23/overview-mcp)";
 
 /** Where tools push dashboard cards. */
 export function dashboardUrl(): string {

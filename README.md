@@ -17,7 +17,7 @@ dashboard lights up with what it's seeing.
 ## Try it in 30 seconds (zero keys, zero config)
 
 ```bash
-npx -y github:marcoloco23/overview-mcp demo
+npx -y overview-mcp demo
 ```
 
 That's it. A dashboard opens in your browser and fills with the planet, live: CO₂, global
@@ -28,7 +28,7 @@ no config file. (Needs Node ≥ 20.)
 ## Use it from Claude (one command)
 
 ```bash
-claude mcp add overview -- npx -y github:marcoloco23/overview-mcp
+claude mcp add overview -- npx -y overview-mcp
 ```
 
 Then just ask: *"What's the state of the planet right now?"* · *"Is El Niño coming?"* ·
@@ -80,7 +80,7 @@ planetary-indicator tools) work with no setup at all.
 
 ## Setup details
 
-Want the dashboard alongside Claude? Run `npx -y github:marcoloco23/overview-mcp dashboard`
+Want the dashboard alongside Claude? Run `npx -y overview-mcp dashboard`
 in a second terminal and watch the map light up as Claude works (it's optional — tools
 behave identically without it).
 
@@ -92,7 +92,7 @@ behave identically without it).
   "mcpServers": {
     "overview": {
       "command": "npx",
-      "args": ["-y", "github:marcoloco23/overview-mcp"]
+      "args": ["-y", "overview-mcp"]
     }
   }
 }
@@ -113,13 +113,13 @@ Pass them where your MCP client expects env vars, e.g.:
 
 ```bash
 claude mcp add overview -e FIRMS_MAP_KEY=xxx -e CDSE_CLIENT_ID=xxx -e CDSE_CLIENT_SECRET=xxx \
-  -- npx -y github:marcoloco23/overview-mcp
+  -- npx -y overview-mcp
 ```
 
 Then verify everything in one shot:
 
 ```bash
-npx -y github:marcoloco23/overview-mcp doctor
+npx -y overview-mcp doctor
 ```
 
 ```

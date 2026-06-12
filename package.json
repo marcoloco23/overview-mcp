@@ -1,6 +1,6 @@
 {
   "name": "overview-mcp",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Earth-observation MCP server + live mission-control dashboard. Give Claude eyes on Earth: pull satellite imagery, compute vegetation/water/burn indices, surface live wildfires and disasters, and diff a place across time — over free, open Copernicus and NASA data.",
   "license": "MIT",
   "author": "marcoloco23",

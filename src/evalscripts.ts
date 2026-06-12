@@ -99,13 +99,31 @@ export const SCL_CLEAR_MASK = {
   waterForNonWater: { id: 6, label: "open water" },
 } as const;
 
-/** The human-readable SCL classes masked for a given index (drives the provenance block). */
+/**
+ * The s2cloudless layer of the mask (Horizon 1 "cloud handling, rung 1"). CDSE exposes the
+ * s2cloudless model as two bands on sentinel-2-l2a: CLM (binary cloud mask, 160 m) and CLP
+ * (cloud probability, 0–255). SCL and s2cloudless fail differently — SCL catches shadows
+ * s2cloudless doesn't flag, s2cloudless catches the haze and small cumulus SCL misses — so
+ * the stat mask excludes a pixel if EITHER flags it. Like SCL_CLEAR_MASK, this constant is
+ * the single source of truth shared by the evalscript and the provenance description.
+ */
+export const S2CLOUDLESS_MASK = {
+  clpCutoff: 102, // CLP ≥ 102/255 ≈ 40 % cloud probability → masked
+  label: "s2cloudless cloud (CLM=1 or CLP≥40%)",
+} as const;
+
+/** Human-readable description of the per-pixel mask method (drives the provenance block). */
+export const STAT_MASK_METHOD =
+  "Sentinel-2 SCL + s2cloudless (CLM/CLP) per-pixel mask — a pixel is excluded if either flags it";
+
+/** The human-readable classes masked for a given index (drives the provenance block). */
 export function maskedClassesFor(index: string): string[] {
   const labels = SCL_CLEAR_MASK.always.map((c) => `${c.label} (SCL ${c.id})`);
   if (index !== "NDWI") {
     const w = SCL_CLEAR_MASK.waterForNonWater;
     labels.push(`${w.label} (SCL ${w.id})`);
   }
+  labels.push(S2CLOUDLESS_MASK.label);
   return labels;
 }
 
@@ -116,9 +134,10 @@ export function statEvalscript(index: string): string {
   const [a, b] = pair;
   const ids: number[] = SCL_CLEAR_MASK.always.map((c) => c.id);
   if (index !== "NDWI") ids.push(SCL_CLEAR_MASK.waterForNonWater.id);
-  const clear = ids.map((id) => `s.SCL!==${id}`).join(" && ");
+  const scl = ids.map((id) => `s.SCL!==${id}`).join(" && ");
+  const clear = `${scl} && s.CLM!==1 && s.CLP<${S2CLOUDLESS_MASK.clpCutoff}`;
   return `//VERSION=3
-function setup(){return {input:[{bands:["${a}","${b}","SCL","dataMask"]}],output:[{id:"data",bands:1,sampleType:"FLOAT32"},{id:"dataMask",bands:1}]}}
+function setup(){return {input:[{bands:["${a}","${b}","SCL","CLM","CLP","dataMask"]}],output:[{id:"data",bands:1,sampleType:"FLOAT32"},{id:"dataMask",bands:1}]}}
 function evaluatePixel(s){
   var v=(s.${a}-s.${b})/(s.${a}+s.${b});
   var clear=(${clear})?1:0;

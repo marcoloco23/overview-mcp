@@ -137,7 +137,7 @@ export async function runDoctor(): Promise<void> {
       ? `  All zero-key sources reachable — ${readyTools}/22 tools ready to use.`
       : `  ⚠️ ${zeroKeyDown} zero-key source(s) unreachable (network/proxy?) — some tools will fail.`,
   );
-  out("  Try it now:  npx -y github:marcoloco23/overview-mcp demo");
+  out("  Try it now:  npx -y overview-mcp demo");
   out("");
   if (zeroKeyDown > 0) process.exitCode = 1;
 }

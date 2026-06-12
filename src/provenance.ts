@@ -5,7 +5,7 @@
 // reason about trust and to reproduce the result.
 
 import type { SceneInfo } from "./clients/copernicus.js";
-import { maskedClassesFor } from "./evalscripts.js";
+import { maskedClassesFor, STAT_MASK_METHOD } from "./evalscripts.js";
 import type { BBox } from "./types.js";
 import { nowIso } from "./util.js";
 
@@ -40,8 +40,8 @@ const COLLECTION = "sentinel-2-l2a";
 
 const STATS_DISCLAIMER =
   "Decision-support, not decision. Statistics are computed over a least-cloudy composite " +
-  "with cloud/shadow/cirrus pixels removed via the Sentinel-2 SCL mask; check the % valid " +
-  "and the contributing scenes before acting on this result.";
+  "with cloud/shadow/cirrus pixels removed via the Sentinel-2 SCL + s2cloudless masks; check " +
+  "the % valid and the contributing scenes before acting on this result.";
 
 const IMAGE_DISCLAIMER =
   "Decision-support, not decision. This is a least-cloudy mosaic of the window (not a single " +
@@ -67,7 +67,7 @@ export function s2Provenance(opts: {
   const masked = opts.kind === "stats";
   const cloudMask = masked
     ? {
-        method: "Sentinel-2 Scene Classification (SCL) per-pixel mask",
+        method: STAT_MASK_METHOD,
         excludedClasses: maskedClassesFor(opts.index ?? "NDVI"),
         ...(opts.validPct != null ? { validPct: opts.validPct } : {}),
       }
