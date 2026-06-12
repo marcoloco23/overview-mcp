@@ -26,6 +26,49 @@ function evaluatePixel(s){
 }`,
 };
 
+/**
+ * Visualization evalscripts for Sentinel-1 GRD (`sar_render`). Inputs are GAMMA0
+ * terrain-corrected linear backscatter (VV/VH). We apply a sqrt stretch (a cheap dB-like
+ * compression of SAR's wide dynamic range) with modest gains — a sensible starting point to
+ * tune against real scenes. SAR has no cloud concept: bright = rough/urban/forest, dark =
+ * smooth/calm-water.
+ */
+export const SAR_EVALSCRIPTS: Record<string, string> = {
+  // Co-pol VV backscatter, grayscale.
+  vv: `//VERSION=3
+function setup(){return {input:["VV"],output:{bands:3}}}
+function evaluatePixel(s){var v=Math.sqrt(Math.max(0,s.VV))*1.5;return [v,v,v]}`,
+
+  // Cross-pol VH backscatter (volume scattering → vegetation), grayscale.
+  vh: `//VERSION=3
+function setup(){return {input:["VH"],output:{bands:3}}}
+function evaluatePixel(s){var v=Math.sqrt(Math.max(0,s.VH))*2.5;return [v,v,v]}`,
+
+  // False color: R=VV, G=VH, B=VV/VH ratio — urban bright, vegetation greenish, water dark.
+  falseColor: `//VERSION=3
+function setup(){return {input:["VV","VH"],output:{bands:3}}}
+function evaluatePixel(s){
+  var vv=Math.max(0,s.VV), vh=Math.max(0,s.VH);
+  return [Math.sqrt(vv)*1.5, Math.sqrt(vh)*2.5, (vv/(vh+1e-6))*0.1];
+}`,
+};
+
+/**
+ * Statistical evalscript for SAR water/flood extent. Water (and other smooth surfaces)
+ * specularly reflect radar away from the sensor → very low VV backscatter, so VV γ⁰ below a
+ * threshold marks water. Outputs a binary band (1 = water), so the Statistical API's `mean`
+ * over the AOI is the **water-covered fraction**. `threshLinear` is the VV γ⁰ cutoff in linear
+ * power (convert from dB with 10^(dB/10)).
+ */
+export function sarWaterEvalscript(threshLinear: number): string {
+  return `//VERSION=3
+function setup(){return {input:[{bands:["VV","dataMask"]}],output:[{id:"data",bands:1,sampleType:"FLOAT32"},{id:"dataMask",bands:1}]}}
+function evaluatePixel(s){
+  var water=(s.VV<${threshLinear})?1:0;
+  return {data:[water],dataMask:[s.dataMask]};
+}`;
+}
+
 /** Normalized-difference index definitions for the Statistical API. */
 const INDEX_BANDS: Record<string, [string, string]> = {
   NDVI: ["B08", "B04"], // (NIR - Red)/(NIR + Red)
@@ -36,25 +79,49 @@ const INDEX_BANDS: Record<string, [string, string]> = {
 export const INDEX_NAMES = Object.keys(INDEX_BANDS);
 
 /**
- * Build a FLOAT32 + dataMask stat evalscript for a normalized-difference index.
- *
- * Uses the Sentinel-2 Scene Classification (SCL) band to exclude polluting pixels from the
- * statistics so the numbers are trustworthy:
- *   - always mask defective (1), cloud shadow (3), cloud (8,9), and cirrus (10),
- *   - for vegetation/burn indices also mask open water (6) so seasonal river/lake level
- *     doesn't dilute the result — but NEVER for NDWI, where water is the signal.
+ * The Sentinel-2 Scene Classification (SCL) classes excluded from index statistics, kept
+ * here as the SINGLE source of truth so the evalscript mask and the human-readable
+ * provenance description (src/provenance.ts) can never drift apart.
+ *   - `always` is masked for every index (defective, shadow, cloud, cirrus),
+ *   - `waterForNonWater` (open water, class 6) is additionally masked for vegetation/burn
+ *     indices so seasonal river/lake level doesn't dilute the result — but NEVER for NDWI,
+ *     where water is the signal.
  * Masked pixels become noDataCount, which the tool surfaces as a "% valid" quality flag.
  */
+export const SCL_CLEAR_MASK = {
+  always: [
+    { id: 1, label: "defective" },
+    { id: 3, label: "cloud shadow" },
+    { id: 8, label: "cloud (medium prob.)" },
+    { id: 9, label: "cloud (high prob.)" },
+    { id: 10, label: "thin cirrus" },
+  ],
+  waterForNonWater: { id: 6, label: "open water" },
+} as const;
+
+/** The human-readable SCL classes masked for a given index (drives the provenance block). */
+export function maskedClassesFor(index: string): string[] {
+  const labels = SCL_CLEAR_MASK.always.map((c) => `${c.label} (SCL ${c.id})`);
+  if (index !== "NDWI") {
+    const w = SCL_CLEAR_MASK.waterForNonWater;
+    labels.push(`${w.label} (SCL ${w.id})`);
+  }
+  return labels;
+}
+
+/** Build a FLOAT32 + dataMask stat evalscript for a normalized-difference index. */
 export function statEvalscript(index: string): string {
   const pair = INDEX_BANDS[index];
   if (!pair) throw new Error(`unknown index '${index}'. Options: ${INDEX_NAMES.join(", ")}`);
   const [a, b] = pair;
-  const water = index !== "NDWI" ? " && s.SCL !== 6" : "";
+  const ids: number[] = SCL_CLEAR_MASK.always.map((c) => c.id);
+  if (index !== "NDWI") ids.push(SCL_CLEAR_MASK.waterForNonWater.id);
+  const clear = ids.map((id) => `s.SCL!==${id}`).join(" && ");
   return `//VERSION=3
 function setup(){return {input:[{bands:["${a}","${b}","SCL","dataMask"]}],output:[{id:"data",bands:1,sampleType:"FLOAT32"},{id:"dataMask",bands:1}]}}
 function evaluatePixel(s){
   var v=(s.${a}-s.${b})/(s.${a}+s.${b});
-  var clear=(s.SCL!==1 && s.SCL!==3 && s.SCL!==8 && s.SCL!==9 && s.SCL!==10${water})?1:0;
+  var clear=(${clear})?1:0;
   return {data:[v],dataMask:[s.dataMask*clear]};
 }`;
 }

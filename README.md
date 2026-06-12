@@ -18,13 +18,22 @@ dashboard lights up with what it's seeing.
 | `eo_snapshot` | Quick satellite image of a bbox (NASA Worldview/GIBS, MODIS/VIIRS) — true-color, false-color, or fire overlay | — |
 | `events` | Live natural-disaster events worldwide (NASA EONET): wildfires, storms, volcanoes, floods | — |
 | `geo_resolve` | Turn a place name into a bounding box (OpenStreetMap) | — |
+| `stac_search` | Search open satellite archives (Sentinel-2/-1, Landsat) for scenes + COG asset URLs (Earth Search STAC) | — |
 | `fires_in` | Active fire / thermal-anomaly detections (NASA FIRMS), near-real-time | `FIRMS_MAP_KEY` |
 | `eo_render` | High-res (10 m) Sentinel-2 imagery — trueColor / falseColor / NDVI ramp | CDSE |
+| `sar_render` | All-weather Sentinel-1 SAR backscatter (sees through cloud/smoke/night) — VV / VH / false-color | CDSE |
+| `sar_water` | All-weather water / flood extent from Sentinel-1 (water % of the AOI via low VV backscatter) | CDSE |
+| `sar_flood` | Flood onset: SAR water extent before vs after an event, and the change (Δ water %) | CDSE |
 | `eo_index` | NDVI / NDWI / NBR statistics over a least-cloudy Sentinel-2 composite | CDSE |
 | `eo_search` | Search the Sentinel-2 archive for scenes + cloud cover | CDSE |
 | `eo_compare` | Change detection: render two dates + the index delta (deforestation/flood/burn) | CDSE |
 
-The two zero-key tools (`eo_snapshot`, `events`, `geo_resolve`) work with no setup at all.
+Every Copernicus result (`eo_render`/`eo_index`/`eo_compare`) carries a **provenance block**
+— data source, sensor, composite window, cloud-mask method + masked classes, % valid pixels,
+contributing scene IDs — so the output is decision-support you can audit, not a bare number.
+
+The zero-key tools (`eo_snapshot`, `events`, `geo_resolve`, `stac_search`) work with no setup
+at all.
 
 ## Install (Claude Code)
 
@@ -84,10 +93,14 @@ panel, and the before/after comparison.
 pnpm install
 pnpm build            # tsc (server -> dist/) + vite build (web -> dist/web/)
 pnpm typecheck
+pnpm test             # offline test suite (node:test) — no network or API keys needed
 pnpm dev              # MCP server on stdio (from source)
 pnpm dev:dashboard    # dashboard server (from source)
 pnpm dev:web          # vite dev server for the dashboard UI
 ```
+
+Tests mock the network, so the whole suite runs with zero credentials — CI
+(`.github/workflows/ci.yml`) runs typecheck + test + build on every push.
 
 ## Data sources & attribution
 

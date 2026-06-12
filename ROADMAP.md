@@ -24,11 +24,15 @@ Env: `CDSE_CLIENT_ID`/`CDSE_CLIENT_SECRET` (Copernicus), `FIRMS_MAP_KEY` (fires)
 | `eo_search(bbox, dateFrom, dateTo, collection="sentinel-2-l2a", maxCloud=20)` | Copernicus Catalog/STAC | OAuth | search |
 | `eo_snapshot(bbox, date, layers="trueColor", width=1024)` | NASA Worldview Snapshots | none | imagery |
 | `eo_render(bbox, date, view="trueColor"\|"falseColor"\|"ndvi", width=1024)` | Copernicus Process + evalscript | OAuth | imagery |
+| `sar_render(bbox, date, view="falseColor"\|"vv"\|"vh", windowDays=14, orbitDirection?)` | Copernicus Process (Sentinel-1 GRD) | OAuth | imagery |
+| `sar_water(bbox, date, windowDays=14, thresholdDb=-17, orbitDirection?)` | Copernicus Statistics (Sentinel-1 GRD) | OAuth | index |
+| `sar_flood(bbox, dateBefore, dateAfter, windowDays=12, thresholdDb=-17, orbitDirection?)` | Copernicus Statistics ×2 (Sentinel-1 GRD) | OAuth | index |
 | `eo_index(bbox, date, index="NDVI"\|"NDWI"\|"NBR")` | Copernicus Statistical | OAuth | index |
 | `fires_in(bbox, dayRange=1, source="VIIRS_SNPP_NRT")` | NASA FIRMS area | map key | fires |
 | `events(category?, status="open", bbox?, days=30)` | NASA EONET v3 | none | events |
 | `eo_compare(bbox, dateA, dateB, index="NDVI")` | render×2 + index delta | OAuth | compare |
 | `geo_resolve(place)` *(optional)* | OSM Nominatim | none | — |
+| `stac_search(bbox, dateFrom, dateTo, collection="sentinel-2-l2a", maxCloud?, limit=8)` | Earth Search STAC | none | search |
 
 Endpoints:
 - OAuth token: `POST https://identity.dataspace.copernicus.eu/auth/realms/CDSE/protocol/openid-connect/token` (`client_credentials`)
@@ -38,6 +42,7 @@ Endpoints:
 - Worldview snapshot: `GET https://wvs.earthdata.nasa.gov/api/v1/snapshot?REQUEST=GetSnapshot&TIME=&BBOX=&CRS=EPSG:4326&LAYERS=&FORMAT=image/jpeg&WIDTH=&HEIGHT=`
 - FIRMS area: `GET https://firms.modaps.eosdis.nasa.gov/api/area/csv/{MAP_KEY}/{SOURCE}/{west,south,east,north}/{dayRange}/{date}`
 - EONET: `GET https://eonet.gsfc.nasa.gov/api/v3/events?status=open&bbox=&days=`
+- STAC: `POST https://earth-search.aws.element84.com/v1/search` (open, no key; `OVERVIEW_STAC_URL` overrides)
 
 ---
 
@@ -111,13 +116,24 @@ All free / low-or-no GPU. Highest-leverage first:
 
 - [ ] **Better cloud masking** — Cloud Score+ / s2cloudless / OmniCloudMask behind
       `eo_index`/`eo_render`/`eo_compare` (big reliability jump over SCL; keep %-valid flag).
-- [ ] **Sentinel-1 SAR** — GRD backscatter render + flood/water mapping (`sar_*` tools).
-      The start of all-weather; SAR sees through cloud/smoke/night. (Closes our #1 weakness.)
-- [ ] **Provenance block** on every numeric output (scene IDs, dates, sensor, baseline,
-      mask method, % valid) — reframe outputs as decision-support.
+- [~] **Sentinel-1 SAR** — `sar_render` (GRD backscatter, GAMMA0 terrain-corrected; VV/VH/
+      false-color), `sar_water` (water/flood extent: water % from low VV backscatter), and
+      `sar_flood` (flood onset: Δ water % between a pre-event baseline and a post-event date),
+      via a generalized multi-collection Copernicus client (Process + Statistics). Offline-verified
+      (evalscripts + S1/S2 request-body shape + water-fraction + flood-delta + provenance, 65
+      tests); ⚠️ live render/stats + threshold/viz-gain tuning deferred (no creds/network).
+- [x] **Provenance block** on every numeric/imagery output (data source, sensor/collection,
+      composite window + mosaicking, cloud-mask method + masked SCL classes, % valid,
+      best-effort contributing scene IDs, bbox, retrieved-at, decision-support disclaimer).
+      Shared SCL-mask constant keeps the reported mask honest. In `eo_render`/`eo_index`/
+      `eo_compare` output + dashboard cards. Offline-verified (27 checks); live CDSE deferred.
 - [ ] **Classic change detection** as tools: temporal median compositing, CCDC/BFAST/LandTrendr.
 - [ ] **Consume GFW alerts** (GLAD-L/GLAD-S2/RADD/DIST-ALERT) instead of rebuilding deforestation.
-- [ ] **Internal STAC + COG layer** (Earth Search + Planetary Computer); GEE as research backend.
+- [~] **Internal STAC + COG layer** — `stac_search` against the open, no-auth Earth Search
+      (Element 84) STAC (endpoint configurable via `OVERVIEW_STAC_URL` → Planetary Computer /
+      self-hosted). Zero-key scene search returning COG asset URLs; provider-independent
+      companion to `eo_render` reads still TODO. Offline-verified (15 parser checks + graceful
+      error path); live Earth Search call deferred (no outbound network this session).
 
 ## Horizon 2 — The planet becomes searchable (≈ months 6–12)
 
@@ -134,7 +150,8 @@ see [VISION.md](VISION.md) §7.
 
 - Dashboard design pass (frontend-design skill) if a visual refresh is wanted.
 - `eo_compare` swipe slider on the map (currently overlays the "after" image).
-- Publish to npm (currently `npx github:` install); add CI.
+- [done 2026-06-06] Offline `node:test` suite (53 tests, network mocked) + GitHub Actions CI
+  (typecheck → test → build). Publish to npm still TODO (currently `npx github:` install).
 - More FIRMS sources / MODIS false-color option; antimeridian bbox support.
 - Transient-failure retry for the no-key NASA fetches (EONET occasionally throttles under
   hammering). Sub-2-day stats-window guard. Evict images by card, not count.

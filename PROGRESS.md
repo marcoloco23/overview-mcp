@@ -5,6 +5,188 @@ status, next priorities. The live task pointer is in [CONTINUITY.md](CONTINUITY.
 
 ---
 
+## Session: 2026-06-06 (Horizon 1 — SAR flood onset) ✅
+
+**Focus**: `sar_flood` — water-extent change between two dates (flood onset). Composes the
+`sar_water` measurement across a pre-event baseline and a post-event date; positive Δ over a
+short window indicates new water. All-weather, so it works for storm/monsoon flooding optical
+can't see through.
+
+**Done**:
+- [x] `sar_flood(bbox, dateBefore, dateAfter, windowDays?, thresholdDb?, orbitDirection?)` →
+      water % before/after, the Δ (pts of the AOI), per-date validity + provenance, and an
+      interpretation; pushes an index card.
+- [x] Extracted a **pure `floodResult()`** helper (delta + rounding + low-quality flag +
+      interpretation) so the new logic is unit-testable without the network.
+
+**Build/smoke**: 65 tests green (5 new in `test/sar.test.ts`: flood / recede / unchanged /
+one-decimal rounding / low-coverage flag); typecheck (src + test) + build green; MCP lists 12
+tools. Live S1 stats deferred (no creds/network).
+
+**Next**: cloud-masking upgrade (#1) or classic temporal-median compositing (#4); live-verify
+the SAR tools once creds/network exist.
+
+---
+
+## Session: 2026-06-06 (Horizon 1 — SAR water/flood extent) ✅
+
+**Focus**: `sar_water` — all-weather water/flood extent from Sentinel-1 (ROADMAP Horizon 1
+item 2 follow-up). Water and smooth surfaces reflect radar away from the sensor → low VV
+backscatter, so a threshold on VV γ⁰ is a robust water mask that works through cloud and night.
+
+**Done**:
+- [x] `sar_water(bbox, date?, windowDays?, thresholdDb?, orbitDirection?)` → water % of the
+      AOI + % valid + threshold + provenance + interpretation; pushes an index card.
+- [x] `sarWaterEvalscript(threshLinear)` — binary water band (VV < thresh ? 1 : 0), so the
+      Statistical-API **mean = water fraction**; thresholdDb (default −17) → linear via 10^(dB/10).
+- [x] Generalized `statistics()` to accept a `source?: DataSourceSpec` (mirrors the earlier
+      `process()` refactor); SAR water passes the `sentinel-1-grd` GAMMA0 spec.
+
+**Build/smoke**: 60 tests green (3 new — water evalscript threshold/bands; S1 statistics
+request-body shape + water-fraction from a mocked response; S2 statistics unchanged);
+typecheck (src + test) + build green; MCP lists 11 tools. **Live S1 stats + threshold tuning
+deferred** (no creds/network); −17 dB is a documented starting point.
+
+**Next**: SAR Δ-water (flood onset between two dates); cloud-masking upgrade (#1); live-verify
+the SAR tools once creds/network exist.
+
+---
+
+## Session: 2026-06-06 (Horizon 1 — Sentinel-1 SAR) ✅
+
+**Focus**: Sentinel-1 C-band SAR backscatter rendering (`sar_render`) — all-weather imagery
+that sees through cloud, smoke, and night. VISION's #1 weakness ("the cloud answer");
+ROADMAP Horizon 1 item 2. Built + tested offline; live render deferred (no creds/network).
+
+**Done**:
+- [x] `sar_render(bbox, date?, view?, windowDays?, orbitDirection?, width?)` — views
+      falseColor (VV/VH/ratio), vv, vh; GAMMA0 terrain-corrected, most-recent scene in a
+      lookback window. Image + provenance + imagery card.
+- [x] Generalized `CopernicusClient` to target any collection: a `DataSourceSpec`
+      (`collection`/`mosaickingOrder`/`dataFilter`/`processing`/`maxCloud`) drives `buildInput`;
+      S2 callers use `s2Source()`, which reproduces the **exact previous request body**
+      (deep-equality test guards the refactor). `ProcessOpts.source?` threads it through.
+- [x] `SAR_EVALSCRIPTS` (sqrt-stretch viz over VV/VH) + `sarProvenance` — SAR has no cloud
+      mask, so `cloudMask.method` records "all-weather" as the advantage, with a SAR-specific
+      disclaimer (speckle, incidence-angle/orbit sensitivity).
+
+**Build/smoke**: 57 tests green (4 new: SAR evalscripts, S1 vs S2 `/process` request body,
+SAR provenance); typecheck (src + test) + build green; MCP lists 10 tools; `sar_render`
+without creds returns the clean "set CDSE_*" error. **Live S1 render + visualization-gain
+tuning deferred** (no creds/network) — gains are a documented starting point to tune against
+real scenes.
+
+**Next**: SAR flood/water mapping + a `sar_*` stat tool; cloud-masking upgrade (#1); and
+live-verify the SAR render once creds/network exist.
+
+---
+
+## Session: 2026-06-06 (offline test suite + CI) ✅
+
+**Focus**: A way to make **verified progress fully offline** (no network, no creds) — the
+thing this sandbox needs. Stand up real test infrastructure (the repo had none).
+
+**Done**:
+- [x] Node built-in `node:test` suite (**zero new deps**), run through the existing `tsx`:
+      `node --import tsx --test test/*.test.ts`. **53 tests, 9 files**, all green offline.
+- [x] `test/helpers.ts` — a `fetch` mock returning real `Response` objects + call capture, so
+      HTTP clients are tested without ever touching the network.
+- [x] Coverage: pure logic (`util`, `evalscripts`/SCL mask + byte-identical refactor guard,
+      `provenance`, `parseFiresCsv`, `parseStacFeatures`) and clients via the mock — asserting
+      the bug-prone bits: Worldview `S,W,N,E` / EONET `W,N,E,S` / FIRMS `W,S,E,N` bbox axis
+      order + dayRange clamp; Copernicus OAuth **token cache + single 401-refresh** + stats
+      `validPct` + "no valid data" throw + catalog `Accept: */*`; geocode `[S,N,W,E]→[W,S,E,N]`;
+      and the `/ingest` **XSS security boundary** (`validateIngest`, now exported — id charset,
+      type/mime allow-lists, images cap).
+- [x] `tsconfig.test.json` + `pnpm typecheck:test` (type-checks src+test; the `tsc` build still
+      only emits `src→dist`, verified no test artifacts leak to `dist/`).
+- [x] `.github/workflows/ci.yml` — typecheck → typecheck:test → test → build on push/PR.
+- [x] CLAUDE.md documents the offline-first testing approach; ROADMAP "add CI" ticked.
+
+**Build/smoke**: full CI sequence run locally — `tsc` (server) ✅, `tsc -p tsconfig.test.json`
+✅, **53/53 tests** ✅, `tsc && vite build` ✅, no test files in `dist/` ✅. The only failure
+encountered was a wrong expectation in a test I wrote (heightFor), fixed; the code was correct.
+
+**Why it matters**: live-API verification is great when creds/network exist, but it's no
+longer the *only* way to prove a change — Horizon 1 logic work (and refactors) can now land
+with regression-proof tests in any sandbox.
+
+**Next**: cloud-masking upgrade (#1) + Sentinel-1 SAR (#2) still need live CDSE; new pure
+logic should land with tests here.
+
+---
+
+## Session: 2026-06-06 (Horizon 1 — internal STAC layer) ✅
+
+**Focus**: Second Horizon 1 step — a provider-independent **STAC search** against the open,
+no-auth **Earth Search (Element 84)** API (VISION §7/§8 "Internal STAC + COG layer … so we're
+not bound to one provider's API"; ROADMAP Horizon 1 item 6).
+
+**Why this item**: this container has no creds **and** no outbound network (every host 403s
+via the policy), so nothing external can be live-verified. The STAC layer is the most
+offline-verifiable foundational item — its core is a pure parser (fixture-testable, like
+`parseFiresCsv`) — and it delivers two things v0.1 lacked: a **zero-key** scene search
+(`eo_search` needs CDSE OAuth) and **COG asset URLs** (the substrate Horizon 2 reads).
+
+**Done**:
+- [x] `src/clients/stac.ts` — `StacScene`/`StacAsset` types; pure `parseStacFeatures(json,
+      maxCloud)` (normalize id/datetime/cloud, 6→4 bbox, split data-COG vs thumbnail assets,
+      sort least-cloudy, defensive skips) + thin `stacSearch()` fetch wrapper (POST /search,
+      `query` cloud filter, clean errors).
+- [x] `src/tools/stac.ts` — `stac_search` tool (no key) → result with source/endpoint/COG
+      assets + a `search` dashboard card. Registered in `index.ts` (9 tools); server
+      instructions updated.
+- [x] `config.stacUrl()` (`OVERVIEW_STAC_URL` ?? Earth Search) so Planetary Computer / a
+      self-hosted STAC drop in. README tool table + `.env.example` updated.
+
+**Build/smoke**: `tsc` + `vite build` green; **15 parser fixture checks pass** (3D-bbox
+normalize, asset split, least-cloudy sort, `maxCloud` filter, malformed-feature skip,
+empty → []); MCP lists `stac_search`; a live call returns a cleanly wrapped error
+(`STAC search failed (403) — Host not in allowlist`), confirming the fetch wiring + graceful
+failure. **Live Earth Search response parsing deferred** (no network this session).
+
+**Next**: cloud-masking upgrade (#1) + Sentinel-1 SAR (#2) — need live CDSE creds; and
+live-verify `stac_search` against Earth Search once a session has network.
+
+---
+
+## Session: 2026-06-06 (Horizon 1 — provenance block) ✅
+
+**Focus**: First Horizon 1 step — make every Copernicus output decision-support by attaching
+a structured **provenance block** (VISION §5.4 "verification by default"; ROADMAP Horizon 1
+item 3).
+
+**Why this item first**: this container has no CDSE creds/network, so the cloud-masking
+upgrade (item 1) and Sentinel-1 SAR (item 2) can't be live-verified — and the project's
+discipline is "build → live-verify against real APIs". Provenance is the highest-leverage
+item that is **fully offline-verifiable** (pure logic over known parameters).
+
+**Done**:
+- [x] New `src/provenance.ts`: `Provenance` type + `s2Provenance({bbox,from,to,kind,index,
+      validPct,scenes})` builder. `kind:"stats"` (masked composite → lists excluded SCL
+      classes + % valid) vs `kind:"image"` (least-cloudy mosaic, not per-pixel masked).
+- [x] Extracted the SCL masked-class list into one shared `SCL_CLEAR_MASK` constant +
+      `maskedClassesFor()` in `evalscripts.ts`; rebuilt `statEvalscript` from it so the
+      reported mask can't drift from the applied mask (verified byte-identical to the old
+      hardcoded condition).
+- [x] Wired provenance into `eo_render`/`eo_index`/`eo_compare` (tool text + card payload).
+      Contributing scene IDs via a **best-effort** parallel catalog lookup (free metadata;
+      4 s timeout + try/catch → never blocks or breaks the tool, mirroring the dashboard-push
+      rule).
+- [x] Dashboard: safe collapsible provenance footer on imagery/index/compare cards
+      (`web/src/cards.ts` + CSS), built via DOM nodes/textContent (scene ids are upstream).
+
+**Build/smoke**: `tsc` + `vite build` green; 27 offline checks pass (mask integrity incl.
+NDWI-keeps-water, byte-identical refactor, provenance shapes for both kinds); MCP server
+lists all 8 tools. **Live CDSE imagery/stats verification deferred** (no creds in this
+container).
+
+**Next**: cloud-masking upgrade (Cloud Score+ / s2cloudless / OmniCloudMask — item 1) and
+Sentinel-1 SAR (item 2). Both need live CDSE creds to verify. The shared mask constant +
+`provenance.cloudMask.method` field are set up to make the masking upgrade localized.
+
+---
+
 ## Session: 2026-06-05 (final deep review + full E2E) ✅
 
 **Focus**: Independent deep review of the shipped code + end-to-end test of everything.

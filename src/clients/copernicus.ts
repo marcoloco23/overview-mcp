@@ -33,6 +33,18 @@ export interface IndexStats {
   intervalTo: string;
 }
 
+/**
+ * Describes which collection a Process/Statistics call targets and how to filter/process it.
+ * S2 callers fall back to `s2Source()`; SAR (and future collections) pass their own spec.
+ */
+export interface DataSourceSpec {
+  collection: string;
+  mosaickingOrder?: string;
+  dataFilter?: Record<string, unknown>; // extra fields (acquisitionMode, polarization, orbitDirection, …)
+  processing?: Record<string, unknown>; // S1: { orthorectify, backCoeff }
+  maxCloud?: number; // S2 only → maxCloudCoverage
+}
+
 interface ProcessOpts {
   dateFrom: string; // YYYY-MM-DD
   dateTo: string; // YYYY-MM-DD
@@ -40,6 +52,7 @@ interface ProcessOpts {
   width: number;
   height: number;
   maxCloud?: number;
+  source?: DataSourceSpec; // override the default Sentinel-2 source (e.g. Sentinel-1 GRD)
 }
 
 interface StatsOpts {
@@ -48,6 +61,7 @@ interface StatsOpts {
   evalscript: string;
   width?: number;
   height?: number;
+  source?: DataSourceSpec; // override the default Sentinel-2 source (e.g. Sentinel-1 GRD)
 }
 
 interface SearchOpts {
@@ -117,23 +131,28 @@ export class CopernicusClient {
     return res;
   }
 
-  private dataInput(bbox: BBox, dateFrom: string, dateTo: string, maxCloud?: number) {
-    const dataFilter: Record<string, unknown> = {
-      timeRange: { from: startIso(dateFrom), to: endIso(dateTo) },
-      mosaickingOrder: "leastCC",
-    };
-    if (maxCloud != null) dataFilter.maxCloudCoverage = maxCloud;
-    return {
-      bounds: { bbox, properties: { crs: CRS } },
-      data: [{ type: COLLECTION, dataFilter }],
-    };
+  /** The default Sentinel-2 L2A source: least-cloudy mosaic, optional max-cloud filter. */
+  private s2Source(maxCloud?: number): DataSourceSpec {
+    return { collection: COLLECTION, mosaickingOrder: "leastCC", ...(maxCloud != null ? { maxCloud } : {}) };
+  }
+
+  /** Build the Process/Statistics `input` block for a given data source. */
+  private buildInput(bbox: BBox, dateFrom: string, dateTo: string, source: DataSourceSpec) {
+    const dataFilter: Record<string, unknown> = { timeRange: { from: startIso(dateFrom), to: endIso(dateTo) } };
+    if (source.mosaickingOrder) dataFilter.mosaickingOrder = source.mosaickingOrder;
+    if (source.maxCloud != null) dataFilter.maxCloudCoverage = source.maxCloud;
+    if (source.dataFilter) Object.assign(dataFilter, source.dataFilter);
+    const entry: Record<string, unknown> = { type: source.collection, dataFilter };
+    if (source.processing) entry.processing = source.processing;
+    return { bounds: { bbox, properties: { crs: CRS } }, data: [entry] };
   }
 
   /** Render a Sentinel-2 image (PNG) for a bbox/time window via an evalscript. */
   async process(bbox: BBox, opts: ProcessOpts): Promise<Buffer> {
     assertBBox(bbox);
+    const source = opts.source ?? this.s2Source(opts.maxCloud);
     const body = {
-      input: this.dataInput(bbox, opts.dateFrom, opts.dateTo, opts.maxCloud),
+      input: this.buildInput(bbox, opts.dateFrom, opts.dateTo, source),
       output: {
         width: opts.width,
         height: opts.height,
@@ -159,7 +178,7 @@ export class CopernicusClient {
     // overshoots `to` and gets dropped (→ empty result). floor(span) keeps it inside.
     const days = Math.max(1, Math.floor((Date.parse(to) - Date.parse(from)) / 86_400_000));
     const body = {
-      input: this.dataInput(bbox, opts.dateFrom, opts.dateTo),
+      input: this.buildInput(bbox, opts.dateFrom, opts.dateTo, opts.source ?? this.s2Source()),
       aggregation: {
         timeRange: { from, to },
         aggregationInterval: { of: `P${days}D` },

@@ -36,3 +36,11 @@ export function cdseCreds(): CdseCreds | null {
 export function firmsMapKey(): string | null {
   return process.env.FIRMS_MAP_KEY ?? null;
 }
+
+/**
+ * Base URL of the open STAC API used by `stac_search`. Defaults to Earth Search (Element 84),
+ * which is anonymous (no key). Override to swap in Planetary Computer or a self-hosted STAC.
+ */
+export function stacUrl(): string {
+  return process.env.OVERVIEW_STAC_URL ?? "https://earth-search.aws.element84.com/v1";
+}
