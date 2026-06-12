@@ -221,3 +221,38 @@ body {
 .maplibregl-popup-content .evt-cat { color: var(--muted); }
 .maplibregl-popup-content .evt-date { color: var(--muted); font-size: 0.7rem; }
 .maplibregl-popup-tip { display: none; }
+
+/* series cards (time-series charts) */
+.badge--series { background: #38bdf8; }
+.badge--quakes { background: #a78bfa; }
+.badge--pulse { background: #34d399; }
+
+.chart { margin-top: 0.45rem; }
+.chart-svg { width: 100%; height: auto; display: block; }
+.chart-line { fill: none; stroke-width: 1.4; }
+.chart-threshold { stroke: #475569; stroke-width: 1; stroke-dasharray: 4 3; }
+.chart-label { fill: var(--muted); font-size: 9px; font-family: ui-monospace, monospace; }
+.chart-legend { display: flex; gap: 0.7rem; margin-top: 0.25rem; font-size: 0.68rem; color: var(--muted); }
+.chart-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; vertical-align: middle; }
+
+.series-summary { margin: 0.4rem 0 0; font-size: 0.74rem; color: var(--text); line-height: 1.4; }
+.series-source { margin-top: 0.3rem; font-size: 0.66rem; color: var(--muted); }
+
+.quake-dot { background: #a78bfa; }
+
+/* planet pulse */
+.pulse-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
+.pulse-cell {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.45rem 0.55rem;
+}
+.pulse-label { font-size: 0.64rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.pulse-value { font-size: 1.02rem; font-weight: 600; color: var(--text); margin-top: 0.1rem; }
+.pulse-sub { font-size: 0.64rem; color: var(--muted); margin-top: 0.15rem; }

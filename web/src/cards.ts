@@ -1,4 +1,5 @@
-import type { Card, EventItem, FireItem } from "./types";
+import { renderChart, type SeriesData } from "./chart";
+import type { Card, EventItem, FireItem, QuakeItem } from "./types";
 
 const TYPE_LABEL: Record<Card["type"], string> = {
   imagery: "IMAGERY",
@@ -7,6 +8,9 @@ const TYPE_LABEL: Record<Card["type"], string> = {
   events: "EVENTS",
   compare: "COMPARE",
   search: "SEARCH",
+  series: "SERIES",
+  quakes: "QUAKES",
+  pulse: "PULSE",
 };
 
 /** Coerce an untrusted card type to a known one so it can't be injected into class names. */
@@ -190,6 +194,75 @@ export function renderCard(card: Card, onFocus: (card: Card) => void): HTMLEleme
       list.appendChild(li);
     }
     el.appendChild(list);
+  }
+
+  if (card.type === "series") {
+    const series = (card.payload.series as SeriesData[] | undefined) ?? [];
+    const thresholds = Array.isArray(card.payload.thresholds)
+      ? (card.payload.thresholds as number[]).filter((n) => typeof n === "number")
+      : [];
+    el.appendChild(renderChart(series, thresholds));
+    if (typeof card.payload.summary === "string" && card.payload.summary) {
+      const p = document.createElement("p");
+      p.className = "series-summary";
+      p.textContent = card.payload.summary;
+      el.appendChild(p);
+    }
+    if (typeof card.payload.source === "string" && card.payload.source) {
+      const src = document.createElement("div");
+      src.className = "series-source";
+      src.textContent = card.payload.source;
+      el.appendChild(src);
+    }
+  }
+
+  if (card.type === "quakes") {
+    const quakes = (card.payload.quakes as QuakeItem[] | undefined) ?? [];
+    const list = document.createElement("ul");
+    list.className = "evt-list";
+    const top = [...quakes].sort((a, b) => (b.mag ?? 0) - (a.mag ?? 0)).slice(0, 8);
+    for (const q of top) {
+      const li = document.createElement("li");
+      const dot = document.createElement("span");
+      dot.className = "evt-dot quake-dot";
+      const em = document.createElement("em");
+      em.textContent = q.time.slice(0, 10);
+      li.append(dot, document.createTextNode(`M${q.mag ?? "?"} ${q.place} `), em);
+      list.appendChild(li);
+    }
+    if (quakes.length > top.length) {
+      const more = document.createElement("li");
+      more.className = "evt-more";
+      more.textContent = `+${quakes.length - top.length} more`;
+      list.appendChild(more);
+    }
+    el.appendChild(list);
+  }
+
+  if (card.type === "pulse") {
+    const metrics =
+      (card.payload.metrics as Array<{ label: string; value: string; sub?: string }> | undefined) ?? [];
+    const grid = document.createElement("div");
+    grid.className = "pulse-grid";
+    for (const m of metrics.slice(0, 12)) {
+      const cell = document.createElement("div");
+      cell.className = "pulse-cell";
+      const v = document.createElement("div");
+      v.className = "pulse-value";
+      v.textContent = String(m.value ?? "");
+      const l = document.createElement("div");
+      l.className = "pulse-label";
+      l.textContent = String(m.label ?? "");
+      cell.append(l, v);
+      if (m.sub) {
+        const s = document.createElement("div");
+        s.className = "pulse-sub";
+        s.textContent = String(m.sub);
+        cell.appendChild(s);
+      }
+      grid.appendChild(cell);
+    }
+    el.appendChild(grid);
   }
 
   // Provenance footer(s): single block for imagery/index, before/after pair for compare.

@@ -10,12 +10,14 @@ reference is [CLAUDE.md](CLAUDE.md); the phase plan is [ROADMAP.md](ROADMAP.md).
 
 - Agent read full file: YES
 - Current task understood: YES
-- Current task: **Horizon 1 well underway.** This session shipped: provenance block (item 3),
-  internal STAC layer (item 6, `stac_search`), an **offline test suite + CI**, and the full
-  **Sentinel-1 SAR** set — `sar_render` + `sar_water` + `sar_flood` (item 2, the #1 weakness).
-  **12 tools, 65 offline tests.** Remaining: cloud masking (#1), classic change detection (#4),
-  GFW alerts (#5) — and live-verifying everything built blind this session once creds/network exist.
-- Session started: 2026-06-06 (Session 5)
+- Current task: **Earth Pulse shipped (2026-06-12).** PR #1 (Session 5's blind-built
+  SAR/STAC/provenance) live-verified with real creds and **merged**. Then the **planetary
+  indicators layer** landed: 10 new zero-key tools (enso, ocean_temp, co2, global_temp,
+  sea_ice, quakes, climate_history, air_quality, river_discharge, planet_pulse) + 3 new
+  dashboard card types (series/quakes/pulse). **22 tools, 88 offline tests, all 16 E2E calls
+  live-verified, dashboard screenshotted.** Next: Horizon 1 leftovers — cloud masking (#1),
+  classic change detection (#4), GFW alerts (#5) — then Horizon 2 (AlphaEarth embeddings).
+- Session started: 2026-06-12 (Session 6)
 
 ---
 
@@ -37,10 +39,39 @@ approval · respect API quotas/ToS · cap image size and always return stats wit
 
 ---
 
-## CURRENT STATE (2026-06-06)
+## CURRENT STATE (2026-06-12)
 
-- **v0.1 (Horizon 0) shipped + public.** 8 tools, all live-verified in earlier sessions.
-  Now in **Horizon 1 — Trustworthy analyst**.
+- **PR #1 merged.** Session 5's blind-built work (provenance, STAC, SAR ×3, tests+CI) was
+  live-verified this session with the real `.env` creds — stac_search returned 5 real
+  Sentinel-2 scenes + COG links; eo_index NDVI 0.667 with full provenance; sar_render viewed;
+  sar_water 19.4% (Manaus, 100% valid); sar_flood +2 pts Apr→Jun (Amazon rising-water
+  season — plausible). Merged via `gh pr merge 1 --merge`; main fast-forwarded.
+- **Earth Pulse — the planetary indicators layer (Session 6, plan
+  `.plans/2026-06-12_earth-pulse.md`).** The repo's scope grew from "satellite imagery" to
+  **the data layer for the Earth system**: 10 new tools, all zero-key, all with historic
+  series + trends. New shared series model (`src/series.ts`: linearTrend/decimate/
+  monthlyMean/annualMean/summarize, all pure + tested). New clients:
+  `clients/indicators.ts` (ONI + NOAA-rule `ensoPhase`, CO₂ Mauna Loa, GISTEMP, NSIDC sea
+  ice v4 + climatology), `clients/erddap.ts` (OISST point SST 1981→now, auto-stride ≤400 pts,
+  end clamped to dataset `(last)`), `clients/openmeteo.ts` (ERA5 archive 1940→, CAMS air
+  quality, GloFAS discharge 1984→), `clients/usgs.ts` (FDSN quakes). New tools:
+  `tools/ocean.ts` (enso, ocean_temp), `tools/indicators.ts` (co2, global_temp, sea_ice,
+  planet_pulse — parallel + partial-failure tolerant), `tools/climate.ts` (climate_history,
+  air_quality, river_discharge), `tools/quakes.ts` (quakes).
+- **Dashboard: 3 new card types.** `series` (hand-rolled SVG chart, `web/src/chart.ts`,
+  zero new deps; multi-line + dashed thresholds + legend), `quakes` (magnitude-scaled GPU
+  circle layer + popups), `pulse` (vital-signs metric grid). Server `CARD_TYPES` allow-list
+  extended; all built via DOM nodes/textContent (XSS-safe).
+- **Live-verified (2026-06-12), all real APIs:** ENSO Neutral ONI +0.48 (MAM 2026, strongest
+  El Niño NDJ 2015 +2.75); Niño3.4 SST 28.03 °C; CO₂ 432.34 ppm (+1.83 YoY, +25.7/decade);
+  GISTEMP +1.12 °C (2026-05, +0.27 °C/decade since 1980); Arctic ice 10.759 M km² (−1.282 vs
+  climatology, below p10), Antarctic 11.79 (−1.104, below p10); 20 quakes M5.5+ incl. M7.8
+  Philippines; Berlin 1950→2026 warming ~+0.5 °C/decade recent; Delhi AQI 167 (PM2.5 63
+  ⚠️ WHO); Rio Negro discharge 2.46× period mean (rising-water season — consistent with
+  sar_flood!). planet_pulse degrades gracefully when one source throttles (EONET).
+  **All 16 E2E calls green in one session** (`scripts/live-drive.mjs`); dashboard
+  screenshotted with charts, quake markers, pulse grid.
+- **22 tools, 88 offline tests, build + typecheck green.**
 - **This session (5): Provenance block (Horizon 1 item 3).** Every Copernicus output
   (`eo_render`/`eo_index`/`eo_compare`) now carries a structured `provenance` block — data
   source, sensor/collection, composite window + mosaicking, cloud-mask method + the exact
@@ -109,7 +140,14 @@ Horizon 1 — Trustworthy analyst (current):
 - [ ] Classic change detection (#4, temporal-median compositing) · consume GFW alerts (#5) ·
       STAC-backed render path (see ROADMAP).
 
-12 tools total (added `stac_search`, `sar_render`, `sar_water`, `sar_flood`). Build + typecheck green. **65 offline tests green** (`pnpm test`).
+Earth Pulse — planetary indicators (Session 6): ✅ done + live-verified (see ROADMAP section).
+- [x] 10 zero-key tools: enso · ocean_temp · co2 · global_temp · sea_ice · quakes ·
+      climate_history · air_quality · river_discharge · planet_pulse
+- [x] series/quakes/pulse dashboard cards + SVG chart renderer (no new deps)
+- [x] Offline tests 65 → 88; full 16-call live E2E green; dashboard screenshotted
+
+22 tools total. Build + typecheck green. **88 offline tests green** (`pnpm test`).
+Live driver: `node scripts/live-drive.mjs [tool …]` (boots dashboard on :5099, reads `.env`).
 
 Engineering quality (cross-cutting):
 - [x] Offline `node:test` suite (53 tests, network mocked) + GitHub Actions CI. (this session)
@@ -123,6 +161,24 @@ returns Tropical Storm Amanda. Run the dashboard on a non-default port to avoid 
 ---
 
 ## SESSION LOG
+
+### 2026-06-12 — Session 6 (PR #1 verification + merge; Earth Pulse)
+- Live-verified everything Session 5 built blind, with real creds: 65/65 offline tests, then
+  stac_search (5 real S2 scenes + COG links), eo_index provenance (NDVI 0.667, 64% valid),
+  sar_render (S1 false-color viewed), sar_water (19.4%, 100% valid), sar_flood (+2 pts
+  Apr→Jun over Manaus — Amazon rising-water season). Merged PR #1 (`--merge`, branch deleted).
+- **Earth Pulse:** live-grounded 9 data sources with curl first (ONI, CO₂, GISTEMP, NSIDC
+  v4 — note: v3 path is dead, v4 + climatology is current —, USGS FDSN, ERDDAP OISST incl.
+  stride + `(last)`, Open-Meteo archive/air/flood; Open-Meteo *marine* SST history only
+  reaches ~2022 → used ERDDAP OISST for the long series). Then plan → series model → 4
+  clients (parsers pure + fixture-tested) → 10 tools → 3 dashboard card types → 23 new
+  offline tests → full live E2E (16 calls) → screenshots.
+- Gotchas: ERDDAP strided multi-decade reads can take ~60 s on first hit (cached after);
+  ONI seasons map to mid-months (DJF → Jan per CPC); GISTEMP uses `***` for missing; NSIDC
+  v4 CSV quotes the source-file column (regex parse, not naive split); `yearFraction` of a
+  bare year must land mid-year or annual-series trends skew.
+- Server instructions rewritten around the "data layer for the Earth system" framing +
+  cross-referencing hints (ENSO ↔ fires/floods/SST; discharge ↔ SAR floods).
 
 ### 2026-06-06 — Session 5 (SAR flood onset)
 - Added `sar_flood(bbox, dateBefore, dateAfter, …)` — composes the water measurement across two

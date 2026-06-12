@@ -2,7 +2,7 @@ export type BBox = [number, number, number, number]; // west, south, east, north
 
 export interface Card {
   id: string;
-  type: "imagery" | "index" | "fires" | "events" | "compare" | "search";
+  type: "imagery" | "index" | "fires" | "events" | "compare" | "search" | "series" | "quakes" | "pulse";
   ts: string;
   title: string;
   bbox?: BBox;
@@ -19,6 +19,15 @@ export interface EventItem {
   lastDate: string | null;
   magnitude: string | null;
   link: string;
+}
+
+export interface QuakeItem {
+  lon: number;
+  lat: number;
+  mag: number | null;
+  place: string;
+  time: string;
+  depthKm: number | null;
 }
 
 export interface FireItem {

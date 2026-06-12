@@ -1,5 +1,5 @@
 import maplibregl from "maplibre-gl";
-import type { BBox, Card, EventItem, FireItem } from "./types";
+import type { BBox, Card, EventItem, FireItem, QuakeItem } from "./types";
 
 // NASA GIBS Blue Marble (static, no API key) as a reliable, beautiful basemap.
 const GIBS_BASEMAP =
@@ -9,6 +9,7 @@ let map: maplibregl.Map | null = null;
 const overlayIds: string[] = [];
 let eventMarkers: maplibregl.Marker[] = [];
 const FIRE_LAYER = "fires-src";
+const QUAKE_LAYER = "quakes-src";
 
 /**
  * Initialize the MapLibre map. Returns false (without throwing) if the browser can't
@@ -187,6 +188,68 @@ export function showFires(card: Card): void {
   if (card.bbox) fitBBox(card.bbox);
 }
 
+/** Plot earthquakes as a GPU circle layer, radius scaled by magnitude. */
+export function showQuakes(card: Card): void {
+  const m = map;
+  if (!m) return;
+  const quakes = (card.payload.quakes as QuakeItem[] | undefined) ?? [];
+  const data: GeoJSON.FeatureCollection = {
+    type: "FeatureCollection",
+    features: quakes.map((q) => ({
+      type: "Feature",
+      geometry: { type: "Point", coordinates: [q.lon, q.lat] },
+      properties: { mag: q.mag ?? 0, place: q.place, time: q.time, depthKm: q.depthKm ?? 0 },
+    })),
+  };
+
+  const src = m.getSource(QUAKE_LAYER) as maplibregl.GeoJSONSource | undefined;
+  if (src) {
+    src.setData(data);
+  } else {
+    m.addSource(QUAKE_LAYER, { type: "geojson", data });
+    m.addLayer({
+      id: QUAKE_LAYER,
+      type: "circle",
+      source: QUAKE_LAYER,
+      paint: {
+        // Magnitude is log-energy: emphasize the big ones.
+        "circle-radius": ["interpolate", ["linear"], ["get", "mag"], 3, 3, 6, 9, 8, 18],
+        "circle-color": "#a78bfa",
+        "circle-opacity": 0.6,
+        "circle-stroke-color": "#ede9fe",
+        "circle-stroke-width": 1,
+      },
+    });
+    m.on("click", QUAKE_LAYER, (e) => {
+      const feat = e.features?.[0];
+      if (!feat || feat.geometry.type !== "Point") return;
+      const p = feat.properties ?? {};
+      new maplibregl.Popup({ offset: 8, closeButton: false })
+        .setLngLat(feat.geometry.coordinates as [number, number])
+        .setHTML(
+          `<strong>M${escapeHtml(String(p.mag ?? "?"))}</strong> ${escapeHtml(String(p.place ?? ""))}` +
+            `<br>depth ${escapeHtml(String(p.depthKm ?? "?"))} km` +
+            `<br><span class="evt-date">${escapeHtml(String(p.time ?? "").slice(0, 16))}</span>`,
+        )
+        .addTo(m);
+    });
+  }
+
+  if (card.bbox) {
+    fitBBox(card.bbox);
+  } else if (quakes.length > 0) {
+    const b = new maplibregl.LngLatBounds([quakes[0].lon, quakes[0].lat], [quakes[0].lon, quakes[0].lat]);
+    for (const q of quakes) b.extend([q.lon, q.lat]);
+    map?.fitBounds(b, { padding: 80, duration: 900, maxZoom: 5 });
+  }
+}
+
+/** Fly to a card's bbox without adding an overlay (series cards carry a location). */
+export function focusBBox(card: Card): void {
+  if (!map || !card.bbox) return;
+  fitBBox(card.bbox);
+}
+
 export function clearOverlays(): void {
   if (!map) {
     overlayIds.length = 0;
@@ -201,6 +264,8 @@ export function clearOverlays(): void {
   eventMarkers = [];
   if (map.getLayer(FIRE_LAYER)) map.removeLayer(FIRE_LAYER);
   if (map.getSource(FIRE_LAYER)) map.removeSource(FIRE_LAYER);
+  if (map.getLayer(QUAKE_LAYER)) map.removeLayer(QUAKE_LAYER);
+  if (map.getSource(QUAKE_LAYER)) map.removeSource(QUAKE_LAYER);
 }
 
 function escapeHtml(s: string): string {

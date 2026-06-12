@@ -1,10 +1,13 @@
 # overview-mcp
 
 **Give Claude eyes on Earth.** An [MCP](https://modelcontextprotocol.io) server plus a live
-mission-control dashboard for satellite Earth observation — over free, open NASA and
-Copernicus data. Ask Claude to look at a place and it pulls satellite imagery, computes
-vegetation/water/burn indices, surfaces live wildfires and disasters, and diffs a location
-across time to detect deforestation, flooding, or burn scars. As it works, a browser
+mission-control dashboard — **the data layer for the Earth system**, over free, open data.
+Ask Claude to look at a place and it pulls satellite imagery, computes vegetation/water/burn
+indices, surfaces live wildfires and disasters, and diffs a location across time to detect
+deforestation, flooding, or burn scars. Ask it about the planet and it tracks El Niño,
+ocean temperatures since 1981, CO₂ since 1958, the global temperature record since 1880,
+polar sea ice, earthquakes, air quality, and per-place climate history since 1940 — with
+trends, because the historic record is where the signal lives. As it works, a browser
 dashboard lights up with what it's seeing.
 
 > Claude is the brain; the dashboard is the canvas. The MCP best-effort streams every
@@ -28,12 +31,32 @@ dashboard lights up with what it's seeing.
 | `eo_search` | Search the Sentinel-2 archive for scenes + cloud cover | CDSE |
 | `eo_compare` | Change detection: render two dates + the index delta (deforestation/flood/burn) | CDSE |
 
+### Planetary indicators — the Earth system over time (all zero-key)
+
+| Tool | What it does | History |
+| --- | --- | --- |
+| `planet_pulse` | The planet's vital signs in one call: CO₂, global temp, ENSO, sea ice, quakes, open disasters | now |
+| `enso` | El Niño / La Niña tracking via NOAA's official Oceanic Niño Index, with phase + event rule | 1950→ |
+| `ocean_temp` | Daily sea-surface temperature for any ocean point (NOAA OISST 0.25°), with °C/decade trend | 1981→ |
+| `co2` | Atmospheric CO₂ at Mauna Loa (the Keeling curve) — latest, YoY growth, decadal trend | 1958→ |
+| `global_temp` | NASA GISTEMP global temperature anomaly — latest, warmest years, warming rate | 1880→ |
+| `sea_ice` | Arctic / Antarctic daily sea-ice extent (NSIDC) vs the 1981–2010 climatology | 1978→ |
+| `quakes` | Recent earthquakes (USGS): magnitude, depth, tsunami flag, PAGER alert | real-time |
+| `climate_history` | How a place's climate changed: ERA5 temperature/precip/wind, annual trend per decade | 1940→ |
+| `air_quality` | PM2.5 / PM10 / O₃ / NO₂ / US AQI for any point (Copernicus CAMS), WHO-guideline flags | 48 h |
+| `river_discharge` | Daily river flow at any point (GloFAS) — flood/drought signal vs the period mean | 1984→ |
+
+The Earth is one interconnected system — and these tools are built to be cross-referenced:
+ENSO ↔ fires, floods and SST anomalies; river discharge ↔ SAR flood mapping; climate trends
+↔ what the imagery shows on the ground.
+
 Every Copernicus result (`eo_render`/`eo_index`/`eo_compare`) carries a **provenance block**
 — data source, sensor, composite window, cloud-mask method + masked classes, % valid pixels,
 contributing scene IDs — so the output is decision-support you can audit, not a bare number.
+Every indicator result names its source and carries the series, so claims are checkable.
 
-The zero-key tools (`eo_snapshot`, `events`, `geo_resolve`, `stac_search`) work with no setup
-at all.
+The zero-key tools (`eo_snapshot`, `events`, `geo_resolve`, `stac_search`, and all ten
+planetary-indicator tools) work with no setup at all.
 
 ## Install (Claude Code)
 

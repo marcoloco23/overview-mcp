@@ -6,13 +6,18 @@
 
 ## What this is
 
-`overview-mcp` is an **Earth-observation MCP server** plus a **live mission-control
-dashboard**. It gives Claude eyes on Earth over free, open data:
+`overview-mcp` is **the data layer for the Earth system**: an MCP server plus a **live
+mission-control dashboard**, over free, open data. Two tool families:
 
-- pull satellite imagery for any place/date,
-- compute vegetation/water/burn indices (NDVI/NDWI/NBR),
-- surface live wildfires (NASA FIRMS) and natural disasters (NASA EONET),
-- diff a place across two dates (change detection).
+- **Earth observation** — pull satellite imagery for any place/date; compute vegetation/
+  water/burn indices (NDVI/NDWI/NBR); all-weather Sentinel-1 SAR (render, water, flood);
+  surface live wildfires (NASA FIRMS) and natural disasters (NASA EONET); diff a place
+  across two dates (change detection); zero-key STAC scene search.
+- **Planetary indicators** (all zero-key, all with historic series + trends) — ENSO/El Niño
+  (ONI 1950→), ocean SST (OISST 1981→), CO₂ (Keeling 1958→), global temperature (GISTEMP
+  1880→), polar sea ice (NSIDC 1978→), earthquakes (USGS), per-place climate history (ERA5
+  1940→), air quality (CAMS), river discharge (GloFAS 1984→), and `planet_pulse` (all vital
+  signs in one call). Shared series model + trend math in `src/series.ts`.
 
 Claude Code is the brain. Each tool returns its result to Claude **and** best-effort
 pushes a "card" to a local dashboard server, which streams it to the browser over SSE —

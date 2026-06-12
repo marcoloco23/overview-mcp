@@ -5,6 +5,56 @@ status, next priorities. The live task pointer is in [CONTINUITY.md](CONTINUITY.
 
 ---
 
+## Session: 2026-06-12 (PR #1 verified + merged · Earth Pulse — the planetary indicators layer) ✅
+
+**Focus**: (1) live-verify and land PR #1 (Session 5's blind-built provenance/STAC/SAR/tests);
+(2) grow the repo into **the data layer for the Earth system** — ocean temperatures over time
+(El Niño tracking), CO₂, the global temperature record, sea ice, earthquakes, air quality,
+river discharge, per-place climate history. All free, zero-key, with historic series + trends.
+
+**Done**:
+- [x] **PR #1 live-verified with real creds and merged**: 65/65 offline tests; stac_search →
+      5 real Sentinel-2 scenes + COG links; eo_index NDVI 0.667 + full provenance block;
+      sar_render viewed; sar_water 19.4% (100% valid); sar_flood +2 pts Apr→Jun over Manaus
+      (Amazon rising-water season — plausible). Merged; main fast-forwarded; branch deleted.
+- [x] **9 data sources live-grounded with curl before writing code** (recorded in
+      `.plans/2026-06-12_earth-pulse.md`): NOAA CPC ONI · NOAA GML CO₂ · NASA GISTEMP ·
+      NSIDC Sea Ice Index **v4** (v3 path is dead) + 1981–2010 climatology · USGS FDSN ·
+      ERDDAP OISST (stride + `(last)` clamp) · Open-Meteo archive/air-quality/flood.
+      Finding: Open-Meteo *marine* SST history only reaches ~2022 → ERDDAP OISST (1981→)
+      is the long-series source.
+- [x] **Shared series model** `src/series.ts` — linearTrend (OLS, per-decade), decimate
+      (≤400 pts, ends kept), monthlyMean/annualMean, summarize; all pure, all tested.
+- [x] **4 new clients** with pure exported parsers: `indicators.ts` (ONI + NOAA 5-season
+      `ensoPhase` rule, CO₂, GISTEMP `***`-safe, NSIDC daily+climatology), `erddap.ts`
+      (OISST point series, auto-stride, end clamped to dataset latest), `openmeteo.ts`
+      (ERA5 1940→, CAMS, GloFAS), `usgs.ts` (FDSN GeoJSON → normalized quakes).
+- [x] **10 new tools (→ 22 total)**: `enso`, `ocean_temp`, `co2`, `global_temp`, `sea_ice`,
+      `quakes`, `climate_history`, `air_quality`, `river_discharge`, and `planet_pulse`
+      (all vital signs in one parallel, partial-failure-tolerant call). Every result names
+      its source and carries the series.
+- [x] **Dashboard: 3 new card types** — `series` (hand-rolled SVG chart, `web/src/chart.ts`,
+      zero new deps: multi-line, null-gap-aware, dashed thresholds, legend), `quakes`
+      (magnitude-scaled GPU circle layer + popups), `pulse` (vital-signs grid). `CARD_TYPES`
+      allow-list extended; everything DOM-node/textContent built (XSS-safe).
+- [x] **Tests 65 → 88** (series math, ENSO phase rule incl. event definition, all parsers
+      from live-shaped fixtures, ERDDAP clamp/stride, Open-Meteo error reasons, USGS bbox
+      query bounds, out-of-range lat/lon rejected pre-network).
+
+**Build/smoke**: build + typecheck + typecheck:test green; 88/88 offline tests; **all 16
+live E2E calls green in one session** (`scripts/live-drive.mjs`, new). Live values
+(2026-06-12): ENSO Neutral ONI +0.48 · Niño3.4 SST 28.03 °C · CO₂ 432.34 ppm (+1.83 YoY) ·
+GISTEMP +1.12 °C · Arctic ice −1.282 M km² vs climatology (below p10), Antarctic −1.104
+(below p10) · M7.8 Philippines · Delhi AQI 167 ⚠️ · Rio Negro 2.46× mean discharge
+(consistent with sar_flood's +2 pts!). Dashboard screenshotted: pulse grid, charts, quake
+markers over the GIBS basemap.
+
+**Next**: Horizon 1 leftovers — cloud masking (#1), temporal-median compositing (#4), GFW
+alerts (#5); then Horizon 2 (AlphaEarth embeddings → `eo_similar`). Tidy-up candidates:
+npm publish; ERDDAP first-hit latency note (multi-decade strided reads ~60 s, cached after).
+
+---
+
 ## Session: 2026-06-06 (Horizon 1 — SAR flood onset) ✅
 
 **Focus**: `sar_flood` — water-extent change between two dates (flood onset). Composes the

@@ -12,7 +12,17 @@ const WEB_ROOT = join(__dirname, "..", "web"); // dist/web after build
 const MAX_CARDS = 200;
 const MAX_IMAGES = 200;
 
-const CARD_TYPES = new Set<string>(["imagery", "index", "fires", "events", "compare", "search"]);
+const CARD_TYPES = new Set<string>([
+  "imagery",
+  "index",
+  "fires",
+  "events",
+  "compare",
+  "search",
+  "series",
+  "quakes",
+  "pulse",
+]);
 const ALLOWED_IMAGE_MIME = new Set<string>(["image/jpeg", "image/png"]);
 
 /**

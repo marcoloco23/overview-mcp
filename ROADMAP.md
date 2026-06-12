@@ -33,6 +33,16 @@ Env: `CDSE_CLIENT_ID`/`CDSE_CLIENT_SECRET` (Copernicus), `FIRMS_MAP_KEY` (fires)
 | `eo_compare(bbox, dateA, dateB, index="NDVI")` | render×2 + index delta | OAuth | compare |
 | `geo_resolve(place)` *(optional)* | OSM Nominatim | none | — |
 | `stac_search(bbox, dateFrom, dateTo, collection="sentinel-2-l2a", maxCloud?, limit=8)` | Earth Search STAC | none | search |
+| `enso(months=120)` | NOAA CPC ONI (oni.ascii.txt) | none | series |
+| `ocean_temp(lat, lon, start?, end?)` | NOAA OISST v2.1 via CoastWatch ERDDAP griddap | none | series |
+| `co2(sinceYear?)` | NOAA GML co2_mm_mlo.txt | none | series |
+| `global_temp()` | NASA GISTEMP v4 GLB.Ts+dSST.csv | none | series |
+| `sea_ice(pole)` | NSIDC G02135 v4.0 daily + 1981–2010 climatology | none | series |
+| `quakes(bbox?, minMagnitude=4.5, days=7, limit=100)` | USGS FDSN event service | none | quakes |
+| `climate_history(lat, lon, variable?, startYear?, endYear?)` | Open-Meteo archive (ERA5, 1940→) | none | series |
+| `air_quality(lat, lon)` | Open-Meteo air-quality (CAMS) | none | series |
+| `river_discharge(lat, lon, start?, end?)` | Open-Meteo flood (GloFAS, 1984→) | none | series |
+| `planet_pulse()` | all of the above + EONET + USGS, parallel best-effort | none | pulse |
 
 Endpoints:
 - OAuth token: `POST https://identity.dataspace.copernicus.eu/auth/realms/CDSE/protocol/openid-connect/token` (`client_credentials`)
@@ -116,12 +126,12 @@ All free / low-or-no GPU. Highest-leverage first:
 
 - [ ] **Better cloud masking** — Cloud Score+ / s2cloudless / OmniCloudMask behind
       `eo_index`/`eo_render`/`eo_compare` (big reliability jump over SCL; keep %-valid flag).
-- [~] **Sentinel-1 SAR** — `sar_render` (GRD backscatter, GAMMA0 terrain-corrected; VV/VH/
+- [x] **Sentinel-1 SAR** — `sar_render` (GRD backscatter, GAMMA0 terrain-corrected; VV/VH/
       false-color), `sar_water` (water/flood extent: water % from low VV backscatter), and
       `sar_flood` (flood onset: Δ water % between a pre-event baseline and a post-event date),
       via a generalized multi-collection Copernicus client (Process + Statistics). Offline-verified
-      (evalscripts + S1/S2 request-body shape + water-fraction + flood-delta + provenance, 65
-      tests); ⚠️ live render/stats + threshold/viz-gain tuning deferred (no creds/network).
+      (65 tests) **and live-verified 2026-06-12 with real CDSE creds**: Manaus render viewed,
+      water 19.4% (100% valid), flood Δ +2 pts Apr→Jun (Amazon rising-water season — plausible).
 - [x] **Provenance block** on every numeric/imagery output (data source, sensor/collection,
       composite window + mosaicking, cloud-mask method + masked SCL classes, % valid,
       best-effort contributing scene IDs, bbox, retrieved-at, decision-support disclaimer).
@@ -132,8 +142,28 @@ All free / low-or-no GPU. Highest-leverage first:
 - [~] **Internal STAC + COG layer** — `stac_search` against the open, no-auth Earth Search
       (Element 84) STAC (endpoint configurable via `OVERVIEW_STAC_URL` → Planetary Computer /
       self-hosted). Zero-key scene search returning COG asset URLs; provider-independent
-      companion to `eo_render` reads still TODO. Offline-verified (15 parser checks + graceful
-      error path); live Earth Search call deferred (no outbound network this session).
+      companion to `eo_render` reads still TODO. Offline-verified (15 parser checks) **and
+      live-verified 2026-06-12**: 5 real Sentinel-2 scenes with COG links over Manaus.
+
+## Earth Pulse — the planetary indicators layer ✅ (2026-06-12)
+
+VISION §6 pillar 1 ("Observe — fuse with non-satellite feeds") pulled forward: the Earth
+system as data, not just pixels. **10 new tools (→ 22 total), all zero-key, all with
+historic series + trends**, plus 3 new dashboard card types (`series` hand-rolled SVG
+charts, `quakes` magnitude-scaled map layer, `pulse` vital-signs grid).
+
+- [x] `enso` — ONI 1950→now, official phase rule (≥5 seasons ±0.5 °C); live: Neutral, +0.48 (MAM 2026)
+- [x] `ocean_temp` — OISST 1981→now via ERDDAP, auto-stride, °C/decade trend
+- [x] `co2` — Keeling curve 1958→now; live: 432.34 ppm (2026-05), +1.83 YoY
+- [x] `global_temp` — GISTEMP 1880→now; live: +1.12 °C (2026-05), +0.27 °C/decade since 1980
+- [x] `sea_ice` — NSIDC v4 both poles vs 1981–2010 climatology; live: both below p10
+- [x] `quakes` — USGS FDSN, bbox/magnitude/days; live: M7.8 Philippines
+- [x] `climate_history` — ERA5 1940→now, annual/monthly aggregation + trend/decade
+- [x] `air_quality` — CAMS PM2.5/PM10/O₃/NO₂/US-AQI + WHO-guideline flag
+- [x] `river_discharge` — GloFAS 1984→now, latest-vs-mean flood/drought signal
+- [x] `planet_pulse` — all vital signs in one parallel, partial-failure-tolerant call
+- [x] Offline tests 65 → 88 (parsers from live-grounded fixtures, trend math, ENSO rule)
+- [x] Live-verified: all 16 E2E calls green in one session; dashboard screenshotted
 
 ## Horizon 2 — The planet becomes searchable (≈ months 6–12)
 
